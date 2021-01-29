@@ -104,11 +104,10 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
-	  struct self teststruct = {0.0,0.0,0.0,0.0,0.0};
+	  struct self teststruct = {1.0,2.0,3.0,4.0,5.0};
 	  float measurement = 3.5;
 	  for(uint32_t i=0; i<5; i++){
 		  kalmanfilter(&teststruct, &measurement);
-//		  char arr[10] = "Here";
 	  	  printf("%f\n",measurement);
 	  	  printf("%f\n",teststruct.x);
 	  }
