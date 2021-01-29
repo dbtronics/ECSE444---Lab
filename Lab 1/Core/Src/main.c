@@ -22,7 +22,9 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "kalmanfilter_asm.h"
+#include "stdio.h"
+#include "stdlib.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -53,6 +55,13 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+typedef struct self {
+			  float q;
+			  float r;
+			  float x;
+			  float p;
+			  float k;
+	  };
 
 /* USER CODE END 0 */
 
@@ -94,6 +103,15 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+
+	  struct self teststruct = {0.0,0.0,0.0,0.0,0.0};
+	  float measurement = 3.5;
+	  for(uint32_t i=0; i<5; i++){
+		  kalmanfilter(&teststruct, &measurement);
+//		  char arr[10] = "Here";
+	  	  printf("%f\n",measurement);
+	  	  printf("%f\n",teststruct.x);
+	  }
   }
   /* USER CODE END 3 */
 }
