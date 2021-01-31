@@ -105,7 +105,7 @@ int main(void)
     /* USER CODE BEGIN 3 */
 
 	  struct self teststruct = {5.4,-7,3.5,4.6,5.7};
-	  float measurement = 5.316911;
+	  float measurement = 0.0;
 	  for(uint32_t i=0; i<5; i++){
 		  kalmanfilter(&teststruct, &measurement);
 	  	  printf("%f\n",measurement);

@@ -44,8 +44,8 @@ validate:
 	LSR R8, R8, #24 //remove mantisa
 	CMP R8, #1 //min number in exponent
 	BLT error
-	CMP R8, #255 //max number in exponent
-	BGE error
+	CMP R8, #254 //max number in exponent
+	BGT error
 	BX LR
 
 error:
