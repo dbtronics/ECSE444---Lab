@@ -3,9 +3,13 @@
 
 .global kalmanfilter
 
+//section marks a new section in assembly.
+//.text identifies it as source code
+//rodata marks it as read only, setting it to go into flash not SRAM
+.section .text.rodata
 
 kalmanfilter:
-	PUSH {R4, R5}
+	PUSH {R4 - R9} //save register states
 	PUSH {LR} //preserve the origional link register state on the stack
 	MOV R6,0x0FF
 	LSL R6, R6, #23 //set test bit
@@ -49,6 +53,8 @@ validate:
 	BX LR
 
 error:
+	MOV R9, 0 //set if invalid
+	STR R9, [R2]
 	POP {LR}
 	B done
 
@@ -58,21 +64,21 @@ update:
 	VADD.f32 S4, S4, S1 //self.p = self.p + self.q
 	VADD.f32 S6, S4, S2 //self.p + self.r
 
-	VMOV R7, S6
+	VMOV.f32 R7, S6
 	BL validate
 	VDIV.f32 S5, S4, S6 //self.k = self.p /(self.p + self.r)
 	VSUB.f32 S7, S0, S3 //measurement - self.x
 
-	VMOV R7, S7
+	VMOV.f32 R7, S7
 	BL validate
 	VMUL.f32 S8, S5, S7 //self.k * (measurement - self.x)
 
-	VMOV R7, S8
+	VMOV.f32 R7, S8
 	BL validate
 	VADD.f32 S3, S3, S8	//self.x = self.x + self.k * (measurement - self.x)
 	VMUL.f32 S9, S4, S5 //self.p * self.k
 
-	VMOV R7, S9
+	VMOV.f32 R7, S9
 	BL validate
 	VSUB.f32 S4, S4, S9 //self.p = self.p - (self.p * self.k)
 
@@ -81,8 +87,12 @@ update:
 	VSTR.f32 S3, [R0, #8]
 	VSTR.f32 S4, [R0, #12]
 	VSTR.f32 S5, [R0, #16]
+
+	MOV R9, 1 //set if everything is valid
+	STR R9, [R2]
 	POP {LR} //restore origional LR state on stack
 
 done:
-	POP {R4, R5}
+	POP {R4 - R9}
 	BX LR
+
