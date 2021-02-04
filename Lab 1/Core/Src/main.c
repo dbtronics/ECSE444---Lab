@@ -54,7 +54,6 @@ void cmsis_kalmanfilter(self *state, float *InputArray, float *DSP_OutputArray, 
 	float z = 0; //self.k *(measurement -self.x)
 	float m = 0; //(1-self.k)
 	float constant = 1;
-
 	for(uint32_t i = 0; i<size; i++){
 		//perform kalman update
 		arm_add_f32(&state->p,&state->q, &state->p, 1); //self.p = self.p + self.q
@@ -65,7 +64,6 @@ void cmsis_kalmanfilter(self *state, float *InputArray, float *DSP_OutputArray, 
 		arm_add_f32(&state->x,&z, &state->x, 1);//self.x = self.x + z
 		arm_sub_f32(&constant,&state->k, &m, 1);//m = (1-self.k)
 		arm_mult_f32(&m,&state->q, &state->p, 1); //self.p = m*self.p
-
 		//store output values
 		*(DSP_OutputArray + i) = state->x;
 	}
@@ -75,35 +73,29 @@ void cmsis_kalmanfilter(self *state, float *InputArray, float *DSP_OutputArray, 
 int main(void){
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
 	HAL_Init();
-
 	uint32_t size = sizeof(TEST_ARRAY)/sizeof(float);
 	struct self teststruct = {
-							0.1, //q
-							0.1, //r
-							5, //x
-							0.1,//p
-							0 //k
-					};
-
+				0.1, //q
+				0.1, //r
+				5, //x
+				0.1,//p
+				0 //k
+	};
 	uint32_t isValid = 0;
-	float asm_result = 0;
-	float cmsis_result = 0;
+//	float asm_result = 0;
+//	float cmsis_result = 0;
 	float DSP_OutputArray[size];
-//	float DSP_Diff[size];
-//	float DSP_STD;
-//	float DSP_Correlation;
-//	float DSP_Convolution;
-//	float DSP_AverageOfdiff;
-
-
-
+	float DSP_Diff[size];
+	float DSP_STD;
+	float DSP_Correlation;
+	float DSP_Convolution;
+	float DSP_AverageOfdiff;
 
   /* Configure the system clock */
 	SystemClock_Config();
 
 	while(1){
-
-//		ITM_Port32(31)=1;
+//		ITM_Port32(31)=1; //to be used to measure performance in speed
 //		for(uint32_t i=0; i<size; i++){
 //			  kalmanfilter(&teststruct, &TEST_ARRAY[i], &isValid);
 //			  if(isValid){
@@ -118,6 +110,11 @@ int main(void){
 //		ITM_Port32(31) = 2;
 		cmsis_kalmanfilter(&teststruct, &TEST_ARRAY, DSP_OutputArray, &isValid, size);
 
+		arm_sub_f32(&TEST_ARRAY,&DSP_OutputArray,&DSP_Diff,size); //calculate (Input stream - Output stream)
+		arm_std_f32(&DSP_Diff,size,&DSP_STD); //calculate standard deviation of diff
+		arm_mean_f32(&DSP_Diff,size,&DSP_AverageOfdiff); //calculate average of diff
+		arm_conv_f32(&TEST_ARRAY, size, &DSP_OutputArray, size, &DSP_Convolution); //calculate convolution of Input & Output stream
+		arm_correlate_f32(&TEST_ARRAY, size, &DSP_OutputArray, size, &DSP_Correlation); //calculate correlation of Input & Output stream
 	}
 }
 
