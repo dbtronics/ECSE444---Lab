@@ -87,8 +87,8 @@ int main(void){
 	float DSP_OutputArray[size];
 	float DSP_Diff[size];
 	float DSP_STD;
-	float DSP_Correlation;
-	float DSP_Convolution;
+	float DSP_Correlation[2*size-1];
+	float DSP_Convolution[2*size-1];
 	float DSP_AverageOfdiff;
 
   /* Configure the system clock */
@@ -113,8 +113,8 @@ int main(void){
 		arm_sub_f32(&TEST_ARRAY,&DSP_OutputArray,&DSP_Diff,size); //calculate (Input stream - Output stream)
 		arm_std_f32(&DSP_Diff,size,&DSP_STD); //calculate standard deviation of diff
 		arm_mean_f32(&DSP_Diff,size,&DSP_AverageOfdiff); //calculate average of diff
-		arm_conv_f32(&TEST_ARRAY, size, &DSP_OutputArray, size, &DSP_Convolution); //calculate convolution of Input & Output stream
 		arm_correlate_f32(&TEST_ARRAY, size, &DSP_OutputArray, size, &DSP_Correlation); //calculate correlation of Input & Output stream
+		arm_conv_f32(&TEST_ARRAY, size, &DSP_OutputArray, size, &DSP_Convolution); //calculate convolution of Input & Output stream
 	}
 }
 
