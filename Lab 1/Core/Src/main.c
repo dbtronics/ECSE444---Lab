@@ -45,6 +45,7 @@ float TEST_ARRAY[] = {10.4915760032, 10.1349974709, 9.53992591829, 9.60311878706
 //					10.2814361401, 9.7985283333, 9.6287888922, 10.4491538991,
 					9.5799256668};
 
+//float measurement[] = {0,1,2,3,4};
 
 
 void cmsis_kalmanfilter(self *state, float *InputArray, float *DSP_OutputArray, uint32_t *isValid, uint32_t size){
@@ -83,7 +84,6 @@ int main(void){
 	};
 	uint32_t isValid = 0;
 //	float asm_result = 0;
-//	float cmsis_result = 0;
 	float DSP_OutputArray[size];
 	float DSP_Diff[size];
 	float DSP_STD;
