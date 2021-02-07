@@ -30,6 +30,7 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+#define SIZE 5
 typedef struct self {
 			  float q;
 			  float r;
@@ -39,10 +40,12 @@ typedef struct self {
 }self;
 
 typedef struct statistics {
+	float difference[SIZE];
 	float avgDifference;
 	float stdDeviation;
 	float correlation;
-	float convolution[];
+	float convolution[SIZE];
+	float outputVal[SIZE];
 }statistics;
 
 /* USER CODE END PTD */
@@ -62,30 +65,30 @@ TIM_HandleTypeDef htim2;
 
 /* USER CODE BEGIN PV */
 float TEST_ARRAY[] = {10.4915760032, 10.1349974709, 9.53992591829, 9.60311878706,
-					10.4858891793, 10.1104642352, 9.51066931906, 9.75755656493,
-					9.82154078273, 10.2906541933, 10.4861328671, 9.57321181356,
-					9.70882714139, 10.4359069357, 9.70644021369, 10.2709894039,
-					10.0823149505, 10.2954563443, 9.57130449017, 9.66832136479,
-					10.4521677502, 10.4287240667, 10.1833650752, 10.0066049721,
-					10.3279461634, 10.4767210803, 10.3790964606, 10.1937408814,
-					10.0318963522, 10.4939180917, 10.2381858895, 9.59703103024,
-					9.62757986516, 10.1816981174, 9.65703773168, 10.3905666599,
-					10.0941977598, 9.93515274393, 9.71017053437, 10.0303874259,
-					10.0173504397, 9.69022731474, 9.73902896102, 9.52524419732,
-					10.3270730526, 9.54695650657, 10.3573960542, 9.88773266876,
-					10.1685038683, 10.1683694089, 9.88406620159, 10.3290065898,
-					10.2547227265, 10.4733422906, 10.0133952458, 10.4205693583,
-					9.71335255372, 9.89061396699, 10.1652744131, 10.2580948608,
-					10.3465431058, 9.98446410493, 9.79376005657, 10.202518901,
-					9.83867150985, 9.89532986869, 10.2885062658, 9.97748768804,
-					10.0403923759, 10.1538911808, 9.78303667556, 9.72420149909,
-					9.59117495073, 10.1716116012, 10.2015818969, 9.90650056596,
-					10.3251329834, 10.4550120431, 10.4925749165, 10.1548177178,
-					9.60547133785, 10.4644672766, 10.2326496615, 10.2279703226,
-					10.3535284606, 10.2437410625, 10.3851531317, 9.90784804928,
-					9.98208344925, 9.52778805729, 9.69323876912, 9.92987312087,
-					9.73938925207, 9.60543743477, 9.79600805462, 10.4950988486,
-					10.2814361401, 9.7985283333, 9.6287888922, 10.4491538991,
+//					10.4858891793, 10.1104642352, 9.51066931906, 9.75755656493,
+//					9.82154078273, 10.2906541933, 10.4861328671, 9.57321181356,
+//					9.70882714139, 10.4359069357, 9.70644021369, 10.2709894039,
+//					10.0823149505, 10.2954563443, 9.57130449017, 9.66832136479,
+//					10.4521677502, 10.4287240667, 10.1833650752, 10.0066049721,
+//					10.3279461634, 10.4767210803, 10.3790964606, 10.1937408814,
+//					10.0318963522, 10.4939180917, 10.2381858895, 9.59703103024,
+//					9.62757986516, 10.1816981174, 9.65703773168, 10.3905666599,
+//					10.0941977598, 9.93515274393, 9.71017053437, 10.0303874259,
+//					10.0173504397, 9.69022731474, 9.73902896102, 9.52524419732,
+//					10.3270730526, 9.54695650657, 10.3573960542, 9.88773266876,
+//					10.1685038683, 10.1683694089, 9.88406620159, 10.3290065898,
+//					10.2547227265, 10.4733422906, 10.0133952458, 10.4205693583,
+//					9.71335255372, 9.89061396699, 10.1652744131, 10.2580948608,
+//					10.3465431058, 9.98446410493, 9.79376005657, 10.202518901,
+//					9.83867150985, 9.89532986869, 10.2885062658, 9.97748768804,
+//					10.0403923759, 10.1538911808, 9.78303667556, 9.72420149909,
+//					9.59117495073, 10.1716116012, 10.2015818969, 9.90650056596,
+//					10.3251329834, 10.4550120431, 10.4925749165, 10.1548177178,
+//					9.60547133785, 10.4644672766, 10.2326496615, 10.2279703226,
+//					10.3535284606, 10.2437410625, 10.3851531317, 9.90784804928,
+//					9.98208344925, 9.52778805729, 9.69323876912, 9.92987312087,
+//					9.73938925207, 9.60543743477, 9.79600805462, 10.4950988486,
+//					10.2814361401, 9.7985283333, 9.6287888922, 10.4491538991,
 					9.5799256668};
 
 //float measurement[] = {0,1,2,3,4};
@@ -101,6 +104,18 @@ static void MX_TIM2_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+//C-Analysis
+void C_Analysis(statistics *statistics, float *measurement, float *x); //x = self.x
+
+//C kalman filter
+float c_kalmanfilter(self *filter, float *measurement){
+	filter->p = filter->p + filter->q;
+	filter->k = filter->p/(filter->p + filter->r);
+	filter->x = filter->x + filter->k*(*measurement - (filter->x));
+	filter->p = (1-filter->k)*filter->p;
+	return filter->x;
+}
+//CMSIS kalmanfilter -BONUS
 void cmsis_kalmanfilter(self *state, float *InputArray, float *DSP_OutputArray, uint32_t size){
 	//temporary variables
 	float x = 0; //self.p + self.r
@@ -133,20 +148,28 @@ int main(void)
   /* USER CODE BEGIN 1 */
 	HAL_Init();
 	uint32_t size = sizeof(TEST_ARRAY)/sizeof(float);
-	struct self asm_struct = {
+	struct self asm_kalman_state = {
 				0.1, //q
 				0.1, //r
 				5, //x
 				0.1,//p
 				0 //k
 	};
-	struct self cmsis_struct = {
+	struct self c_kalman_state = {
 				0.1, //q
 				0.1, //r
 				5, //x
 				0.1,//p
 				0 //k
 	};
+	struct self cmsis_kalman_state = {
+				0.1, //q
+				0.1, //r
+				5, //x
+				0.1,//p
+				0 //k
+	};
+
 	uint32_t isValid = 0;
 	float asm_result = 0;
 	float DSP_OutputArray[size];
@@ -157,9 +180,7 @@ int main(void)
 	float DSP_AverageOfdiff;
   /* USER CODE END 1 */
 
-	struct self cKalamnFilter = {0.1, 0.1, 0.1, 5, 0};
-	struct statistics stats = {0.0, 0.0, 0.0, 0.0};
-
+	struct statistics stats = {0.0, 0.0, 0.0}; //last element left blank
 
   /* MCU Configuration--------------------------------------------------------*/
 
@@ -191,24 +212,32 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	    //ASM
-		ITM_Port32(31) = 1; //to be used to measure performance in speed
+	    //ASM Implementation
+//		ITM_Port32(31) = 1; //to be used to measure performance in speed
+//		for(uint32_t i=0; i<size; i++){
+//			  kalmanfilter(&asm_kalman_state, &TEST_ARRAY[i], &isValid);
+//			  if(isValid){
+//				  asm_result = asm_kalman_state.x;
+//				  printf("Result (self.x) = %f\n",asm_result);
+//			  }else{
+//				  printf("Invalid = %ld\n",isValid);
+//			  }
+//		}
+//		asm_result = asm_kalman_state.x;
+//		ITM_Port32(31) = 2;
+
+		//C implementation
 		for(uint32_t i=0; i<size; i++){
-			  kalmanfilter(&asm_struct, &TEST_ARRAY[i], &isValid);
-			  if(isValid){
-				  asm_result = asm_struct.x;
-				  printf("Result (self.x) = %f\n",asm_result);
-			  }else{
-				  printf("Invalid = %ld\n",isValid);
-			  }
+			c_kalmanfilter(&c_kalman_state, &TEST_ARRAY[i]);
+			stats.outputVal[i] = c_kalman_state.x;
 		}
-		asm_result = asm_struct.x;
-		ITM_Port32(31) = 2;
+		//C Ananlysis
+		C_Analysis(&stats,&TEST_ARRAY,&stats.outputVal);
 
 		//CMSIS-DSP
-		ITM_Port32(31) = 3;
-		cmsis_kalmanfilter(&cmsis_struct, &TEST_ARRAY, DSP_OutputArray, size);
-		ITM_Port32(31) = 4;
+//		ITM_Port32(31) = 3;
+		cmsis_kalmanfilter(&cmsis_kalman_state, &TEST_ARRAY, DSP_OutputArray, size);
+//		ITM_Port32(31) = 4;
 		//CMSIS Analysis
 		arm_sub_f32(&TEST_ARRAY,&DSP_OutputArray,&DSP_Diff,size); //calculate (Input stream - Output stream)
 		arm_std_f32(&DSP_Diff,size,&DSP_STD); //calculate standard deviation of diff
@@ -221,27 +250,22 @@ int main(void)
 }
 
 
-float update(float *filter, float *measurement){
-	filter->p = filter->p + filter->q;
-	filter->k = filter->p/(filter->p + filter->r);
-	filter->x = filter->x + filter.k*(measurement-filter->x);
-	filter->p = (1-filter->k)*filter->p;
-	return filter->x;
 
-}
-
-void statisticalCalculation(void *statistics, float *measurement, float *x){
+void C_Analysis(statistics *statistics, float *measurement, float *x){ //x = self.x
 //	sample size and initialization
-	int size = sizeof(measurement)/sizeof(float);
+//	int size = sizeof(TEST_ARR)/sizeof(float);
+	int size = SIZE;
 	float difference[size];
 	float sum;
 	int i;
 
 //	difference values of state estimate with measured estimate
 	for (i = 0; i<size; i++){
-		difference[i] = x[i] - measurement[i];
+		difference[i] = measurement[i] - x[i];
 		sum = sum+difference[i];
+		statistics->difference[i] = difference[i];
 	}
+
 //	compute average and store it in a struct
 	statistics->avgDifference = sum/(float)size;
 
@@ -251,7 +275,7 @@ void statisticalCalculation(void *statistics, float *measurement, float *x){
 
 
 	for (i=0; i<size; i++){
-		varianceSum = varianceSum + pow(difference[i] - avgDifference, 2);
+		varianceSum = varianceSum + pow(difference[i] - (statistics->avgDifference), 2);
 	}
 	variance = varianceSum/(float)size;
 	statistics->stdDeviation = sqrt(variance);
@@ -278,22 +302,20 @@ void statisticalCalculation(void *statistics, float *measurement, float *x){
 			);
 
 //	calculation for convolution
-	int i, j;
-	int h[size]; //convolution array
-	for (i = 0; i<size; i++){
+	uint32_t j;
+	float h[size]; //convolution array
+	for (uint32_t i = 0; i<size; i++){
 		for (j=0;j<size; j++){
 			if(measurement[j]-x[i]>0){
 				h[i]+= x[i]*(measurement[j]-x[i]);
 			}
 		}
 	}
-//	float sumConvolve;
-//	for (i=0; i<size; i++){
-//		sumConvolve += h[i];
-//	}
-	statistics->convolution = h;
 
-
+	for (i = 0; i< size; i++){
+		statistics->convolution[i] = h[i];
+	}
+//	statistics->convolution = h;/
 }
 
 
