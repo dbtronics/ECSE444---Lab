@@ -20,6 +20,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h" //allows us to specify data types such as uint32
 #include "arm_math.h"
+#include "math.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -36,6 +37,14 @@ typedef struct self {
 			  float p;
 			  float k;
 }self;
+
+typedef struct statistics {
+	float avgDifference;
+	float stdDeviation;
+	float correlation;
+	float convolution[];
+}statistics;
+
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -148,6 +157,10 @@ int main(void)
 	float DSP_AverageOfdiff;
   /* USER CODE END 1 */
 
+	struct self cKalamnFilter = {0.1, 0.1, 0.1, 5, 0};
+	struct statistics stats = {0.0, 0.0, 0.0, 0.0};
+
+
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
@@ -206,6 +219,85 @@ int main(void)
   }
   /* USER CODE END 3 */
 }
+
+
+float update(float *filter, float *measurement){
+	filter->p = filter->p + filter->q;
+	filter->k = filter->p/(filter->p + filter->r);
+	filter->x = filter->x + filter.k*(measurement-filter->x);
+	filter->p = (1-filter->k)*filter->p;
+	return filter->x;
+
+}
+
+void statisticalCalculation(void *statistics, float *measurement, float *x){
+//	sample size and initialization
+	int size = sizeof(measurement)/sizeof(float);
+	float difference[size];
+	float sum;
+	int i;
+
+//	difference values of state estimate with measured estimate
+	for (i = 0; i<size; i++){
+		difference[i] = x[i] - measurement[i];
+		sum = sum+difference[i];
+	}
+//	compute average and store it in a struct
+	statistics->avgDifference = sum/(float)size;
+
+//	Needed to calculate stdDeviation for struct
+	float variance;
+	float varianceSum;
+
+
+	for (i=0; i<size; i++){
+		varianceSum = varianceSum + pow(difference[i] - avgDifference, 2);
+	}
+	variance = varianceSum/(float)size;
+	statistics->stdDeviation = sqrt(variance);
+
+//	calculation for correlation
+	float sumX;
+	float sumMeasurement;
+	float sumXMeasurement;
+	float squareSumX;
+	float squareSumMeasurement;
+
+	for (i=0; i<size; i++){
+		sumX = sumX + x[i];
+		sumMeasurement = sumMeasurement + measurement[i];
+		sumXMeasurement = sumXMeasurement + x[i]*measurement[i];
+		squareSumX = squareSumX + pow(x[i], 2);
+		squareSumMeasurement = squareSumMeasurement + pow(measurement[i], 2);
+	}
+
+	statistics->correlation = size*sumXMeasurement - (sumX)*(sumMeasurement);
+	statistics->correlation = statistics->correlation/sqrt(
+			(size*squareSumX - pow(sumX, 2))
+			*(size*squareSumMeasurement - pow(sumMeasurement, 2))
+			);
+
+//	calculation for convolution
+	int i, j;
+	int h[size]; //convolution array
+	for (i = 0; i<size; i++){
+		for (j=0;j<size; j++){
+			if(measurement[j]-x[i]>0){
+				h[i]+= x[i]*(measurement[j]-x[i]);
+			}
+		}
+	}
+//	float sumConvolve;
+//	for (i=0; i<size; i++){
+//		sumConvolve += h[i];
+//	}
+	statistics->convolution = h;
+
+
+}
+
+
+
 
 
 
