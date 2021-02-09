@@ -21,6 +21,7 @@
 #include "main.h" //allows us to specify data types such as uint32
 #include "arm_math.h"
 #include "math.h"
+#include "utility.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -30,23 +31,6 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-#define SIZE 5
-typedef struct self {
-			  float q;
-			  float r;
-			  float x;
-			  float p;
-			  float k;
-}self;
-
-typedef struct statistics {
-	float difference[SIZE];
-	float avgDifference;
-	float stdDeviation;
-	float correlation;
-	float convolution[SIZE];
-	float outputVal[SIZE];
-}statistics;
 
 /* USER CODE END PTD */
 
@@ -104,39 +88,6 @@ static void MX_TIM2_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-//C-Analysis
-void C_Analysis(statistics *statistics, float *measurement, float *x); //x = self.x
-
-//C kalman filter
-float c_kalmanfilter(self *filter, float *measurement){
-	filter->p = filter->p + filter->q;
-	filter->k = filter->p/(filter->p + filter->r);
-	filter->x = filter->x + filter->k*(*measurement - (filter->x));
-	filter->p = (1-filter->k)*filter->p;
-	return filter->x;
-}
-//CMSIS kalmanfilter -BONUS
-void cmsis_kalmanfilter(self *state, float *InputArray, float *DSP_OutputArray, uint32_t size){
-	//temporary variables
-	float x = 0; //self.p + self.r
-	float y = 0; //measurement - self.x
-	float z = 0; //self.k *(measurement -self.x)
-	float m = 0; //(1-self.k)
-	float constant = 1;
-	for(uint32_t i = 0; i<size; i++){
-		//perform kalman update
-		arm_add_f32(&state->p,&state->q, &state->p, 1); //self.p = self.p + self.q
-		arm_add_f32(&state->p,&state->r, &x, 1); //x = self.p + self.r
-		(state->k) = (state->p)/x; //self.k = self.p / x
-		arm_sub_f32(&InputArray[i],&state->x, &y, 1); //y = measurement - self.x
-		arm_mult_f32(&state->k,&y, &z, 1); //z = self.k * y
-		arm_add_f32(&state->x,&z, &state->x, 1);//self.x = self.x + z
-		arm_sub_f32(&constant,&state->k, &m, 1);//m = (1-self.k)
-		arm_mult_f32(&m,&state->q, &state->p, 1); //self.p = m*self.p
-		//store output values
-		*(DSP_OutputArray + i) = state->x;
-	}
-}
 /* USER CODE END 0 */
 
 /**
@@ -147,7 +98,11 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 	HAL_Init();
+
 	uint32_t size = sizeof(TEST_ARRAY)/sizeof(float);
+	uint32_t isValid = 0;
+	float asm_result = 0;
+
 	struct self asm_kalman_state = {
 				0.1, //q
 				0.1, //r
@@ -165,22 +120,14 @@ int main(void)
 	struct self cmsis_kalman_state = {
 				0.1, //q
 				0.1, //r
-				5, //x
+				5.0, //x
 				0.1,//p
 				0 //k
 	};
+//  /* USER CODE END 1 */
 
-	uint32_t isValid = 0;
-	float asm_result = 0;
-	float DSP_OutputArray[size];
-	float DSP_Diff[size];
-	float DSP_STD;
-	float DSP_Correlation[2*size-1];
-	float DSP_Convolution[2*size-1];
-	float DSP_AverageOfdiff;
-  /* USER CODE END 1 */
-
-	struct statistics stats = {0.0, 0.0, 0.0}; //last element left blank
+	struct statistics c_stats = {0.0, 0.0, 0.0}; //last element left blank
+	struct statistics cmsis_stats = {0.0, 0.0, 0.0}; //last element left blank
 
   /* MCU Configuration--------------------------------------------------------*/
 
@@ -214,111 +161,41 @@ int main(void)
     /* USER CODE BEGIN 3 */
 	    //ASM Implementation
 //		ITM_Port32(31) = 1; //to be used to measure performance in speed
-//		for(uint32_t i=0; i<size; i++){
-//			  kalmanfilter(&asm_kalman_state, &TEST_ARRAY[i], &isValid);
-//			  if(isValid){
-//				  asm_result = asm_kalman_state.x;
-//				  printf("Result (self.x) = %f\n",asm_result);
-//			  }else{
-//				  printf("Invalid = %ld\n",isValid);
-//			  }
-//		}
-//		asm_result = asm_kalman_state.x;
+		for(uint32_t i=0; i<size; i++){
+			  kalmanfilter(&asm_kalman_state, &TEST_ARRAY[i], &isValid);
+			  if(isValid){
+				  asm_result = asm_kalman_state.x;
+				  printf("Result (self.x) = %f\n",asm_result);
+			  }else{
+				  printf("Invalid = %ld\n",isValid);
+			  }
+		}
 //		ITM_Port32(31) = 2;
 
 		//C implementation
 		for(uint32_t i=0; i<size; i++){
 			c_kalmanfilter(&c_kalman_state, &TEST_ARRAY[i]);
-			stats.outputVal[i] = c_kalman_state.x;
+			c_stats.outputArray[i] = c_kalman_state.x;
 		}
 		//C Ananlysis
-		C_Analysis(&stats,&TEST_ARRAY,&stats.outputVal);
+		c_analysis(&c_stats,&TEST_ARRAY,&c_stats.outputArray);
 
 		//CMSIS-DSP
 //		ITM_Port32(31) = 3;
-		cmsis_kalmanfilter(&cmsis_kalman_state, &TEST_ARRAY, DSP_OutputArray, size);
+//		cmsis_kalmanfilter(&cmsis_kalman_state, &TEST_ARRAY, &cmsis_stats, size);
+		for(uint32_t i=0; i<size; i++){
+					c_kalmanfilter(&cmsis_kalman_state, &TEST_ARRAY[i]);
+					cmsis_stats.outputArray[i] = cmsis_kalman_state.x;
+					cmsis_stats.inputArray[i] = TEST_ARRAY[i];
+		}
+//		c_analysis(&cmsis_stats,&TEST_ARRAY,&cmsis_stats.outputArray);
 //		ITM_Port32(31) = 4;
-		//CMSIS Analysis
-		arm_sub_f32(&TEST_ARRAY,&DSP_OutputArray,&DSP_Diff,size); //calculate (Input stream - Output stream)
-		arm_std_f32(&DSP_Diff,size,&DSP_STD); //calculate standard deviation of diff
-		arm_mean_f32(&DSP_Diff,size,&DSP_AverageOfdiff); //calculate average of diff
-		arm_correlate_f32(&TEST_ARRAY, size, &DSP_OutputArray, size, &DSP_Correlation); //calculate correlation of Input & Output stream
-		arm_conv_f32(&TEST_ARRAY, size, &DSP_OutputArray, size, &DSP_Convolution); //calculate convolution of Input & Output stream
 
+		cmsis_analysis(&cmsis_stats, size);
+		//CMSIS Analysis
   }
   /* USER CODE END 3 */
 }
-
-
-
-void C_Analysis(statistics *statistics, float *measurement, float *x){ //x = self.x
-//	sample size and initialization
-//	int size = sizeof(TEST_ARR)/sizeof(float);
-	int size = SIZE;
-	float difference[size];
-	float sum;
-	int i;
-
-//	difference values of state estimate with measured estimate
-	for (i = 0; i<size; i++){
-		difference[i] = measurement[i] - x[i];
-		sum = sum+difference[i];
-		statistics->difference[i] = difference[i];
-	}
-
-//	compute average and store it in a struct
-	statistics->avgDifference = sum/(float)size;
-
-//	Needed to calculate stdDeviation for struct
-	float variance;
-	float varianceSum;
-
-
-	for (i=0; i<size; i++){
-		varianceSum = varianceSum + pow(difference[i] - (statistics->avgDifference), 2);
-	}
-	variance = varianceSum/(float)size;
-	statistics->stdDeviation = sqrt(variance);
-
-//	calculation for correlation
-	float sumX;
-	float sumMeasurement;
-	float sumXMeasurement;
-	float squareSumX;
-	float squareSumMeasurement;
-
-	for (i=0; i<size; i++){
-		sumX = sumX + x[i];
-		sumMeasurement = sumMeasurement + measurement[i];
-		sumXMeasurement = sumXMeasurement + x[i]*measurement[i];
-		squareSumX = squareSumX + pow(x[i], 2);
-		squareSumMeasurement = squareSumMeasurement + pow(measurement[i], 2);
-	}
-
-	statistics->correlation = size*sumXMeasurement - (sumX)*(sumMeasurement);
-	statistics->correlation = statistics->correlation/sqrt(
-			(size*squareSumX - pow(sumX, 2))
-			*(size*squareSumMeasurement - pow(sumMeasurement, 2))
-			);
-
-//	calculation for convolution
-	uint32_t j;
-	float h[size]; //convolution array
-	for (uint32_t i = 0; i<size; i++){
-		for (j=0;j<size; j++){
-			if(measurement[j]-x[i]>0){
-				h[i]+= x[i]*(measurement[j]-x[i]);
-			}
-		}
-	}
-
-	for (i = 0; i< size; i++){
-		statistics->convolution[i] = h[i];
-	}
-//	statistics->convolution = h;/
-}
-
-
 
 
 
