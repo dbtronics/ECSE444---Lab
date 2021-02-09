@@ -2,7 +2,7 @@
 #define __UTILITY_H
 
 
-#define SIZE 5 //need to modify this
+#define SIZE 101 //need to modify this
 
 typedef struct self {
 			  float q;
