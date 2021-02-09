@@ -3,8 +3,8 @@
 #include "arm_math.h"
 #include "math.h"
 
-//TODO BONUS
-void cmsis_kalmanfilter(self *state, float *TEST_ARRAY, statistics *cmsis_stats, uint32_t i){
+//BONUS
+void cmsis_kalmanfilter(self *state, statistics *cmsis_stats, uint32_t i){
 	float n = 0.0; //self.p + self.r
 	float y = 0.0; //measurement - self.x
 	float z = 0.0; //self.k *(measurement -self.x)
