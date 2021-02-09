@@ -180,12 +180,12 @@ int main(void)
 		}
 		//CMSIS-DSP
 		ITM_Port32(31) = 3;
-//		cmsis_kalmanfilter(&cmsis_kalman_state, &TEST_ARRAY, &cmsis_stats, size);
+
 		for(uint32_t i=0; i<size; i++){
-					c_kalmanfilter(&cmsis_kalman_state, &TEST_ARRAY[i]);
-					cmsis_stats.outputArray[i] = cmsis_kalman_state.x;
-					cmsis_stats.inputArray[i] = TEST_ARRAY[i];
-		}
+			cmsis_stats.inputArray[i] = TEST_ARRAY[i];
+			cmsis_kalmanfilter(&cmsis_kalman_state, &TEST_ARRAY[i], &cmsis_stats, i);
+			cmsis_stats.outputArray[i] = cmsis_kalman_state.x;
+}
 		ITM_Port32(31) = 4;
 
 		//C Ananlysis

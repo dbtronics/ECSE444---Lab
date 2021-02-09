@@ -4,29 +4,21 @@
 #include "math.h"
 
 //TODO BONUS
-void cmsis_kalmanfilter(self *state, float *InputArray, statistics *cmsis_stats, uint32_t size){
-	//temporary variables
+void cmsis_kalmanfilter(self *state, float *TEST_ARRAY, statistics *cmsis_stats, uint32_t i){
 	float n = 0.0; //self.p + self.r
 	float y = 0.0; //measurement - self.x
 	float z = 0.0; //self.k *(measurement -self.x)
 	float m = 0.0; //(1-self.k)
 	float constant = 1;
-	for(uint32_t i = 0; i<size; i++){
-		//perform kalman update
-		arm_add_f32(&state->p,&state->q, &state->p, 1); //self.p = self.p + self.q
-		arm_add_f32(&state->p,&state->r, &n, 1); //n = self.p + self.r
-		(state->k) = (state->p)/n; //self.k = self.p / n
-		InputArray +=i;
-		arm_sub_f32(&InputArray,&state->x, &y, 1); //y = measurement - self.x
-		arm_mult_f32(&state->k,&y, &z, 1); //z = self.k * y
-		arm_add_f32(&state->x,&z, &state->x, 1);//self.x = self.x + z
-		arm_sub_f32(&constant,&state->k, &m, 1);//m = (1-self.k)
-		arm_mult_f32(&m,&state->q, &state->p, 1); //self.p = m*self.p
-		//store output values
-		cmsis_stats->outputArray[i] = state->x;
 
-//		*(cmsis_outputArray + i) = state->x;
-	}
+	arm_add_f32(&state->p,&state->q, &state->p, 1); //self.p = self.p + self.q
+	arm_add_f32(&state->p,&state->r, &n, 1); //n = self.p + self.r
+	(state->k) = (state->p)/n; //self.k = self.p / n
+	arm_sub_f32(&cmsis_stats->inputArray[i],&state->x, &y, 1); //y = measurement - self.x
+	arm_mult_f32(&state->k,&y, &z, 1); //z = self.k * y
+	arm_add_f32(&state->x,&z, &state->x, 1);//self.x = self.x + z
+	arm_sub_f32(&constant,&state->k, &m, 1);//m = (1-self.k)
+	arm_mult_f32(&m,&state->q, &state->p, 1); //self.p = m*self.p
 }
 
 

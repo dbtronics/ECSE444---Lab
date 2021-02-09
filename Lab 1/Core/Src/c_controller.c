@@ -13,7 +13,6 @@ float c_kalmanfilter(self *filter, float *measurement){
 
 void c_analysis(statistics *statistics, float *measurement, float *x){
 	//	sample size and initialization
-	//	int size = sizeof(TEST_ARR)/sizeof(float);
 		int size = SIZE;
 		float difference[size];
 		float sum;
@@ -82,18 +81,4 @@ void c_analysis(statistics *statistics, float *measurement, float *x){
 				*(size*squareSumMeasurement - pow(sumMeasurement, 2))
 				);
 
-	//	calculation for convolution
-//		uint32_t j;
-//		float h[size]; //convolution array
-//		for (uint32_t i = 0; i<size; i++){
-//			for (j=0;j<size; j++){
-//				if(measurement[j]-x[i]>0){
-//					h[i]+= x[i]*(measurement[j]-x[i]);
-//				}
-//			}
-//		}
-//
-//		for (i = 0; i< size; i++){
-//			statistics->convolution[i] = h[i];
-//		}
 }
