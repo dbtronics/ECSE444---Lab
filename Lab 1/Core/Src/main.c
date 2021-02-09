@@ -176,6 +176,7 @@ int main(void)
 		for(uint32_t i=0; i<size; i++){
 			c_kalmanfilter(&c_kalman_state, &TEST_ARRAY[i]);
 			c_stats.outputArray[i] = c_kalman_state.x;
+			c_stats.inputArray[i] = TEST_ARRAY[i];
 		}
 		//C Ananlysis
 		c_analysis(&c_stats,&TEST_ARRAY,&c_stats.outputArray);

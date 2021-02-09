@@ -16,8 +16,8 @@ typedef struct statistics {
 	float difference[SIZE];
 	float avgDifference;
 	float stdDeviation;
-	float correlation;
-	float correlationArray[2*SIZE-1];
+	float correlation_coeff;
+	float correlation[2*SIZE-1];
 	float convolution[2*SIZE -1];
 	float outputArray[SIZE];
 	float inputArray[SIZE];

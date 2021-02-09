@@ -38,9 +38,30 @@ void c_analysis(statistics *statistics, float *measurement, float *x){
 		variance = varianceSum/(float)size;
 		statistics->stdDeviation = sqrt(variance);
 
+		//correlation array calculation
+		uint32_t k;
+		for (uint32_t i = 0; i< (2*size-1); i++){
+			for (k=0;k<size; k++){
+				if((i-k) < 0 || (i-k)>size-1){
+					continue;
+				}else{
+					statistics->correlation[i] += statistics->inputArray[k-i] * statistics->outputArray[k];
+				}
+			}
+		}
 
+		//convolution array calculation
+		for (uint32_t i = 0; i< (2*size-1); i++){
+			for (k=0;k<size; k++){
+				if((i-k) < 0 || (i-k)>size-1){
+					continue;
+				}else{
+					statistics->convolution[i] += statistics->inputArray[i-k] * statistics->outputArray[k];
+				}
+			}
+		}
 
-	//	calculation for correlation
+	//	calculation for correlation coeff
 		float sumX;
 		float sumMeasurement;
 		float sumXMeasurement;
@@ -55,24 +76,24 @@ void c_analysis(statistics *statistics, float *measurement, float *x){
 			squareSumMeasurement = squareSumMeasurement + pow(measurement[i], 2);
 		}
 
-		statistics->correlation = size*sumXMeasurement - (sumX)*(sumMeasurement);
-		statistics->correlation = statistics->correlation/sqrt(
+		statistics->correlation_coeff = size*sumXMeasurement - (sumX)*(sumMeasurement);
+		statistics->correlation_coeff = statistics->correlation_coeff/sqrt(
 				(size*squareSumX - pow(sumX, 2))
 				*(size*squareSumMeasurement - pow(sumMeasurement, 2))
 				);
 
 	//	calculation for convolution
-		uint32_t j;
-		float h[size]; //convolution array
-		for (uint32_t i = 0; i<size; i++){
-			for (j=0;j<size; j++){
-				if(measurement[j]-x[i]>0){
-					h[i]+= x[i]*(measurement[j]-x[i]);
-				}
-			}
-		}
-
-		for (i = 0; i< size; i++){
-			statistics->convolution[i] = h[i];
-		}
+//		uint32_t j;
+//		float h[size]; //convolution array
+//		for (uint32_t i = 0; i<size; i++){
+//			for (j=0;j<size; j++){
+//				if(measurement[j]-x[i]>0){
+//					h[i]+= x[i]*(measurement[j]-x[i]);
+//				}
+//			}
+//		}
+//
+//		for (i = 0; i< size; i++){
+//			statistics->convolution[i] = h[i];
+//		}
 }

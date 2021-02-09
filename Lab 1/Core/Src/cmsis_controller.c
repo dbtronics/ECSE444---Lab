@@ -34,6 +34,6 @@ void cmsis_analysis(statistics *cmsis_stats, uint32_t size){
 	arm_sub_f32(&cmsis_stats->inputArray,&cmsis_stats->outputArray,&cmsis_stats->difference,size); //calculate (Input stream - Output stream)
 	arm_std_f32(&cmsis_stats->difference,size,&cmsis_stats->stdDeviation); //calculate standard deviation of diff
 	arm_mean_f32(&cmsis_stats->difference,size,&cmsis_stats->avgDifference); //calculate average of diff
-	arm_correlate_f32(&cmsis_stats->inputArray, size, &cmsis_stats->outputArray, size,&cmsis_stats->correlationArray); //calculate correlation of Input & Output stream
+	arm_correlate_f32(&cmsis_stats->inputArray, size, &cmsis_stats->outputArray, size,&cmsis_stats->correlation); //calculate correlation of Input & Output stream
 	arm_conv_f32(&cmsis_stats->inputArray, size, &cmsis_stats->outputArray, size, &cmsis_stats->convolution); //calculate convolution of Input & Output stream
 }
