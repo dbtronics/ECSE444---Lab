@@ -75,7 +75,7 @@ float TEST_ARRAY[] = {10.4915760032, 10.1349974709, 9.53992591829, 9.60311878706
 					10.2814361401, 9.7985283333, 9.6287888922, 10.4491538991,
 					9.5799256668};
 
-//float measurement[] = {0,1,2,3,4};
+//float TEST_ARRAY[] = {0,1,2,3,4};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -124,10 +124,10 @@ int main(void)
 				0.1,//p
 				0 //k
 	};
-//  /* USER CODE END 1 */
+	struct statistics c_stats = {0.0, 0.0, 0.0}; //init with array elements set empty
+	struct statistics cmsis_stats = {0.0, 0.0, 0.0};
+  /* USER CODE END 1 */
 
-	struct statistics c_stats = {0.0, 0.0, 0.0}; //last element left blank
-	struct statistics cmsis_stats = {0.0, 0.0, 0.0}; //last element left blank
 
   /* MCU Configuration--------------------------------------------------------*/
 
@@ -159,8 +159,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-
-		ITM_Port32(31) = 1; //to be used to measure performance in speed
+		ITM_Port32(31) = 1; //timing analysis port
 	    //ASM Implementation
 		for(uint32_t i=0; i<size; i++){
 			  kalmanfilter(&asm_kalman_state, &TEST_ARRAY[i], &isValid);
@@ -183,15 +182,17 @@ int main(void)
 
 		for(uint32_t i=0; i<size; i++){
 			cmsis_stats.inputArray[i] = TEST_ARRAY[i];
-			cmsis_kalmanfilter(&cmsis_kalman_state, &TEST_ARRAY[i], &cmsis_stats, i);
+			cmsis_kalmanfilter(&cmsis_kalman_state, &cmsis_stats, i);
 			cmsis_stats.outputArray[i] = cmsis_kalman_state.x;
-}
+		}
 		ITM_Port32(31) = 4;
 
 		//C Ananlysis
 		c_analysis(&c_stats,&TEST_ARRAY,&c_stats.outputArray);
+		ITM_Port32(31) = 5;
 		//CMSIS Analysis
 		cmsis_analysis(&cmsis_stats, size);
+		ITM_Port32(31) = 6;
   }
   /* USER CODE END 3 */
 }

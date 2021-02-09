@@ -2,7 +2,8 @@
 #define __UTILITY_H
 
 
-#define SIZE 101 //need to modify this
+#define SIZE 101 //size of array
+//#define SIZE 5
 
 typedef struct self {
 			  float q;
@@ -13,10 +14,10 @@ typedef struct self {
 }self;
 
 typedef struct statistics {
-	float difference[SIZE];
 	float avgDifference;
 	float stdDeviation;
 	float correlation_coeff;
+	float difference[SIZE];
 	float correlation[2*SIZE-1];
 	float convolution[2*SIZE -1];
 	float outputArray[SIZE];
