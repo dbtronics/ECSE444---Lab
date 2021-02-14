@@ -61,6 +61,7 @@ static void MX_GPIO_Init(void);
   * @brief  The application entry point.
   * @retval int
   */
+
 int main(void)
 {
   /* USER CODE BEGIN 1 */
@@ -91,9 +92,20 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  int changeState = 0;
   while (1)
   {
     /* USER CODE END WHILE */
+	  if(!HAL_GPIO_ReadPin(BUTTON_BLUE_GPIO_Port, BUTTON_BLUE_Pin)){
+		  if(!changeState){ //prevents toggling if button is on hold
+			  HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
+			  changeState = 1;
+		  }
+
+//		  HAL_Delay(500); //Alow for the button to take an effect when button is pressed rather than toggling it again and again
+	  } else { //this is only active if the button is not pressed. Allows for toggling
+		  changeState = 0;
+	  }
 
     /* USER CODE BEGIN 3 */
   }
