@@ -1,6 +1,6 @@
 .settings/
 
-../Debug/
+Debug/
 
 Lab-2 Debug.launch
 STM32L4S5VITX_FLASH.ld
