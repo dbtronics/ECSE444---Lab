@@ -54,8 +54,8 @@ all: main-build
 main-build: Lab-2.elf secondary-outputs
 
 # Tool invocations
-Lab-2.elf: $(OBJS) $(USER_OBJS) /Users/Dian/Dropbox/McGill\ University/Courses/ECSE\ 444/ECSE444---Lab/Lab-2/STM32L4S5VITX_FLASH.ld
-	arm-none-eabi-gcc -o "Lab-2.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"/Users/Dian/Dropbox/McGill University/Courses/ECSE 444/ECSE444---Lab/Lab-2/STM32L4S5VITX_FLASH.ld" --specs=nosys.specs -Wl,-Map="Lab-2.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+Lab-2.elf: $(OBJS) $(USER_OBJS) C:\Users\Koshi\ECSE444\ECSE444---Lab\Lab-2\STM32L4S5VITX_FLASH.ld
+	arm-none-eabi-gcc -o "Lab-2.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\Koshi\ECSE444\ECSE444---Lab\Lab-2\STM32L4S5VITX_FLASH.ld" --specs=nosys.specs -Wl,-Map="Lab-2.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
