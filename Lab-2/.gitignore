@@ -2,6 +2,4 @@ Debug/
 .settings/
 .DS_Store
 Lab-2 Debug.launch
-STM32L4S5VITX_FLASH.ld
-STM32L4S5VITX_RAM.ld
 .mxproject
