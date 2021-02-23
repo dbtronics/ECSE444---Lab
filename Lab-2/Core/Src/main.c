@@ -32,6 +32,16 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+//#define BLINK_LED
+//#define ADC_VREFINT
+//#define ADC_TEMPSENSOR
+#define ADC_MULTI_CHANNEL
+
+#define TS_CAL1_TEMP 30 //FROM DATASHEET
+#define TS_CAL1 *((uint16_t*) 0x1FFF75A8) //FROM DATASHEET
+#define TS_CAL2_TEMP 130 //FROM DATASHEET
+#define TS_CAL2 *((uint16_t*) 0x1FFF75CA) //FROM DATASHEET
+#define SCALE 1.1 //temp is calculated at 3.0V so needs to be scaled (3.3/3.0)
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -41,6 +51,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
+DMA_HandleTypeDef hdma_adc1;
 
 /* USER CODE BEGIN PV */
 /* USER CODE END PV */
@@ -48,6 +59,7 @@ ADC_HandleTypeDef hadc1;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_ADC1_Init(void);
 /* USER CODE BEGIN PFP */
 
@@ -86,35 +98,87 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
+  uint32_t data[2];
   HAL_ADC_Init(&hadc1);
-  uint32_t value;
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+#ifdef BLINK_LED
   int changeState = 0;
+#endif
+
+#if defined(ADC_VREFINT) || defined(ADC_MULTI_CHANNEL)
+  float voltageRef =0;
+#endif
+
+#if defined(ADC_TEMPSENSOR) || defined(ADC_MULTI_CHANNEL)
+  uint16_t tempRaw;
+  float tempData;
+#endif
+
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+#ifdef BLINK_LED //If this is defined then execute blinking led
 	  if(!HAL_GPIO_ReadPin(BUTTON_BLUE_GPIO_Port, BUTTON_BLUE_Pin)){
 			  if(!changeState){ //prevents toggling if button is on hold
 				  HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
 				  changeState = 1;
 			  }
-
-	//		  HAL_Delay(500); //Alow for the button to take an effect when button is pressed rather than toggling it again and again
 		  } else { //this is only active if the button is not pressed. Allows for toggling
 			  changeState = 0;
 		  }
+#endif
 
 	  	  //get ADC value
+#ifdef ADC_VREFINT
 	  	  HAL_ADC_Start(&hadc1);
-//	  	  HAL_ADC_PollForConversion(&hadc1,HAL_MAX_DELAY);
-		  value = HAL_ADC_GetValue(&hadc1);
+	  	  HAL_ADC_PollForConversion(&hadc1,HAL_MAX_DELAY);
+		  voltageRef = (float) HAL_ADC_GetValue(&hadc1)/ 4096 * 3.300;
+		  HAL_ADC_Stop(&hadc1);
+#endif
+
+#ifdef ADC_TEMPSENSOR
+		  HAL_ADC_Start_DMA(&hadc1, data, 2);
+		  HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
+
+		  //Get Temperature data
+		  tempRaw = data[1];
+		  tempRaw *= SCALE;
+//		  tempData = __HAL_ADC_CALC_TEMPERATURE(3300, tempRaw, ADC_RESOLUTION_12B);
+		  tempData = (TS_CAL2_TEMP - TS_CAL1_TEMP)/(TS_CAL2 - TS_CAL1) *
+				  ((tempRaw * SCALE) - TS_CAL1) + 30;
+
+		  HAL_ADC_Stop_DMA(&hadc1);
+
+#endif
+
+#ifdef ADC_MULTI_CHANNEL
+		  //THIS IS ACCESSED USING DMA WITH data AS A BUFFER
+		  HAL_ADC_Start_DMA(&hadc1, data, 2);
+		  HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
+
+		  //Get internal voltage ref
+		  voltageRef = data[0]*3.3/4096;
+
+		  //Get Temperature data
+		  tempRaw = data[1];
+		  tempRaw *= SCALE;
+		  tempData = __HAL_ADC_CALC_TEMPERATURE(3300, tempRaw, ADC_RESOLUTION_12B);
+		  //FORMULA BELOW IS GIVING ME WRONG VALUES. PROBLEM IS HIGHLY LIKELY WITH TS_CAL1 AND TS_CAL2  MEMORY MAPPING
+//		  tempData = ((float) (TS_CAL2_TEMP - TS_CAL1_TEMP))/((float)(TS_CAL2 - TS_CAL1)) *
+//		  				  ((float)(tempRaw - TS_CAL1)) + TS_CAL1_TEMP;
+
+		  HAL_ADC_Stop_DMA(&hadc1);
+#endif
+
+
   }
   /* USER CODE END 3 */
 }
@@ -204,11 +268,11 @@ static void MX_ADC1_Init(void)
   hadc1.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
+  hadc1.Init.ScanConvMode = ADC_SCAN_ENABLE;
   hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   hadc1.Init.LowPowerAutoWait = DISABLE;
-  hadc1.Init.ContinuousConvMode = DISABLE;
-  hadc1.Init.NbrOfConversion = 1;
+  hadc1.Init.ContinuousConvMode = ENABLE;
+  hadc1.Init.NbrOfConversion = 2;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
@@ -221,7 +285,7 @@ static void MX_ADC1_Init(void)
   }
   /** Configure Regular Channel
   */
-  sConfig.Channel = ADC_CHANNEL_1;
+  sConfig.Channel = ADC_CHANNEL_VREFINT;
   sConfig.Rank = ADC_REGULAR_RANK_1;
   sConfig.SamplingTime = ADC_SAMPLETIME_2CYCLES_5;
   sConfig.SingleDiff = ADC_SINGLE_ENDED;
@@ -231,9 +295,35 @@ static void MX_ADC1_Init(void)
   {
     Error_Handler();
   }
+  /** Configure Regular Channel
+  */
+  sConfig.Channel = ADC_CHANNEL_TEMPSENSOR;
+  sConfig.Rank = ADC_REGULAR_RANK_2;
+  sConfig.SamplingTime = ADC_SAMPLETIME_640CYCLES_5;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
   /* USER CODE BEGIN ADC1_Init 2 */
 
   /* USER CODE END ADC1_Init 2 */
+
+}
+
+/**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMAMUX1_CLK_ENABLE();
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Channel1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 
 }
 
