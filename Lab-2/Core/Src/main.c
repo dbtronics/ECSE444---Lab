@@ -103,6 +103,8 @@ int main(void)
   /* USER CODE BEGIN 2 */
   uint32_t data[2];
   HAL_ADC_Init(&hadc1);
+  float CAL1;
+  float CAL2;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -151,6 +153,8 @@ int main(void)
 		  //Get Temperature data
 		  tempRaw = data[1];
 		  tempRaw *= SCALE;
+		  CAL1 = TS_CAL1 * (1/SCALE);
+		  CAL2 = TS_CAL2 * (1/SCALE);
 //		  tempData = __HAL_ADC_CALC_TEMPERATURE(3300, tempRaw, ADC_RESOLUTION_12B);
 		  tempData = (TS_CAL2_TEMP - TS_CAL1_TEMP)/(TS_CAL2 - TS_CAL1) *
 				  ((tempRaw * SCALE) - TS_CAL1) + 30;
@@ -166,14 +170,16 @@ int main(void)
 
 		  //Get internal voltage ref
 		  voltageRef = data[0]*3.3/4096;
+		  CAL1 = TS_CAL1 * (1/SCALE);
+		  CAL2 = TS_CAL2 * (1/SCALE);
 
 		  //Get Temperature data
 		  tempRaw = data[1];
 		  tempRaw *= SCALE;
 		  tempData = __HAL_ADC_CALC_TEMPERATURE(3300, tempRaw, ADC_RESOLUTION_12B);
 		  //FORMULA BELOW IS GIVING ME WRONG VALUES. PROBLEM IS HIGHLY LIKELY WITH TS_CAL1 AND TS_CAL2  MEMORY MAPPING
-//		  tempData = ((float) (TS_CAL2_TEMP - TS_CAL1_TEMP))/((float)(TS_CAL2 - TS_CAL1)) *
-//		  				  ((float)(tempRaw - TS_CAL1)) + TS_CAL1_TEMP;
+		  tempData = ((TS_CAL2_TEMP - TS_CAL1_TEMP))/((CAL2 - CAL1)) *
+		  				  ((tempRaw - CAL1)) + TS_CAL1_TEMP;
 
 		  HAL_ADC_Stop_DMA(&hadc1);
 #endif
