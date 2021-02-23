@@ -32,16 +32,17 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-//#define BLINK_LED
+#define BLINK_LED
 //#define ADC_VREFINT
 //#define ADC_TEMPSENSOR
-#define ADC_MULTI_CHANNEL
+//#define ADC_MULTI_CHANNEL
 
 #define TS_CAL1_TEMP 30 //FROM DATASHEET
 #define TS_CAL1 *((uint16_t*) 0x1FFF75A8) //FROM DATASHEET
 #define TS_CAL2_TEMP 130 //FROM DATASHEET
 #define TS_CAL2 *((uint16_t*) 0x1FFF75CA) //FROM DATASHEET
 #define SCALE 1.1 //temp is calculated at 3.0V so needs to be scaled (3.3/3.0)
+#define VREFINT_CAL *((uint16_t*) 0x1FFF75AA)
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -103,8 +104,6 @@ int main(void)
   /* USER CODE BEGIN 2 */
   uint32_t data[2];
   HAL_ADC_Init(&hadc1);
-  float CAL1;
-  float CAL2;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -114,7 +113,8 @@ int main(void)
 #endif
 
 #if defined(ADC_VREFINT) || defined(ADC_MULTI_CHANNEL)
-  float voltageRef =0;
+  float VRefInt = 0;
+  float VRef = 0;
 #endif
 
 #if defined(ADC_TEMPSENSOR) || defined(ADC_MULTI_CHANNEL)
@@ -142,7 +142,8 @@ int main(void)
 #ifdef ADC_VREFINT
 	  	  HAL_ADC_Start(&hadc1);
 	  	  HAL_ADC_PollForConversion(&hadc1,HAL_MAX_DELAY);
-		  voltageRef = (float) HAL_ADC_GetValue(&hadc1)/ 4096 * 3.300;
+		  VRefInt = (float) HAL_ADC_GetValue(&hadc1)/ 4096 * 3.300;
+		  VRef = 3*VREFINT_CAL/HAL_ADC_GetValue(&hadc1);
 		  HAL_ADC_Stop(&hadc1);
 #endif
 
@@ -153,11 +154,9 @@ int main(void)
 		  //Get Temperature data
 		  tempRaw = data[1];
 		  tempRaw *= SCALE;
-		  CAL1 = TS_CAL1 * (1/SCALE);
-		  CAL2 = TS_CAL2 * (1/SCALE);
-//		  tempData = __HAL_ADC_CALC_TEMPERATURE(3300, tempRaw, ADC_RESOLUTION_12B);
-		  tempData = (TS_CAL2_TEMP - TS_CAL1_TEMP)/(TS_CAL2 - TS_CAL1) *
-				  ((tempRaw * SCALE) - TS_CAL1) + 30;
+		  tempData = __HAL_ADC_CALC_TEMPERATURE(3300, tempRaw, ADC_RESOLUTION_12B);
+//		  tempData = (TS_CAL2_TEMP - TS_CAL1_TEMP)/(TS_CAL2 - TS_CAL1) *
+//				  ((tempRaw * SCALE) - TS_CAL1) + 30;
 
 		  HAL_ADC_Stop_DMA(&hadc1);
 
@@ -168,18 +167,17 @@ int main(void)
 		  HAL_ADC_Start_DMA(&hadc1, data, 2);
 		  HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
 
-		  //Get internal voltage ref
-		  voltageRef = data[0]*3.3/4096;
-		  CAL1 = TS_CAL1 * (1/SCALE);
-		  CAL2 = TS_CAL2 * (1/SCALE);
+		  //Get internal voltage reference and voltage reference
+		  VRefInt = data[0]*3.3/4096*SCALE;
+		  VRef = 3*(float)VREFINT_CAL/(data[0]*SCALE);
 
 		  //Get Temperature data
 		  tempRaw = data[1];
 		  tempRaw *= SCALE;
 		  tempData = __HAL_ADC_CALC_TEMPERATURE(3300, tempRaw, ADC_RESOLUTION_12B);
 		  //FORMULA BELOW IS GIVING ME WRONG VALUES. PROBLEM IS HIGHLY LIKELY WITH TS_CAL1 AND TS_CAL2  MEMORY MAPPING
-		  tempData = ((TS_CAL2_TEMP - TS_CAL1_TEMP))/((CAL2 - CAL1)) *
-		  				  ((tempRaw - CAL1)) + TS_CAL1_TEMP;
+//		  tempData = (float)((TS_CAL2_TEMP - TS_CAL1_TEMP))/((TS_CAL2 - TS_CAL1)) *
+//		  				  ((tempRaw - TS_CAL1)) + TS_CAL1_TEMP;
 
 		  HAL_ADC_Stop_DMA(&hadc1);
 #endif
@@ -240,7 +238,7 @@ void SystemClock_Config(void)
   PeriphClkInit.AdcClockSelection = RCC_ADCCLKSOURCE_PLLSAI1;
   PeriphClkInit.PLLSAI1.PLLSAI1Source = RCC_PLLSOURCE_MSI;
   PeriphClkInit.PLLSAI1.PLLSAI1M = 1;
-  PeriphClkInit.PLLSAI1.PLLSAI1N = 24;
+  PeriphClkInit.PLLSAI1.PLLSAI1N = 40;
   PeriphClkInit.PLLSAI1.PLLSAI1P = RCC_PLLP_DIV2;
   PeriphClkInit.PLLSAI1.PLLSAI1Q = RCC_PLLQ_DIV2;
   PeriphClkInit.PLLSAI1.PLLSAI1R = RCC_PLLR_DIV2;
