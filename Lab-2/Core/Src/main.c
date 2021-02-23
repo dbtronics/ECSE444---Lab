@@ -32,8 +32,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define BLINK_LED
-//#define ADC_VREFINT
+//#define BLINK_LED
+#define ADC_VREFINT
 //#define ADC_TEMPSENSOR
 //#define ADC_MULTI_CHANNEL
 
@@ -119,7 +119,9 @@ int main(void)
 
 #if defined(ADC_TEMPSENSOR) || defined(ADC_MULTI_CHANNEL)
   uint16_t tempRaw;
-  float tempData;
+  float tempData_1;
+  float tempData_2;
+  float tempData_3;
 #endif
 
   while (1)
@@ -140,10 +142,11 @@ int main(void)
 
 	  	  //get ADC value
 #ifdef ADC_VREFINT
-	  	  HAL_ADC_Start(&hadc1);
-	  	  HAL_ADC_PollForConversion(&hadc1,HAL_MAX_DELAY);
-		  VRefInt = (float) HAL_ADC_GetValue(&hadc1)/ 4096 * 3.300;
-		  VRef = 3*VREFINT_CAL/HAL_ADC_GetValue(&hadc1);
+		  HAL_ADC_Start_DMA(&hadc1, data, 2);
+		  HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
+		  //Get internal voltage reference and voltage reference
+		  VRefInt = data[0]*3.3/4096*SCALE;
+		  VRef = 3*(float)VREFINT_CAL/(data[0]*SCALE);
 		  HAL_ADC_Stop(&hadc1);
 #endif
 
@@ -154,9 +157,9 @@ int main(void)
 		  //Get Temperature data
 		  tempRaw = data[1];
 		  tempRaw *= SCALE;
-		  tempData = __HAL_ADC_CALC_TEMPERATURE(3300, tempRaw, ADC_RESOLUTION_12B);
-//		  tempData = (TS_CAL2_TEMP - TS_CAL1_TEMP)/(TS_CAL2 - TS_CAL1) *
-//				  ((tempRaw * SCALE) - TS_CAL1) + 30;
+		  tempData_1 = __HAL_ADC_CALC_TEMPERATURE(3300, tempRaw, ADC_RESOLUTION_12B);
+		  tempData_2 = (float) (TS_CAL2_TEMP - TS_CAL1_TEMP)/(TS_CAL2 - TS_CAL1) *
+				  ((tempRaw * SCALE) - TS_CAL1) + 30;
 
 		  HAL_ADC_Stop_DMA(&hadc1);
 
@@ -171,13 +174,11 @@ int main(void)
 		  VRefInt = data[0]*3.3/4096*SCALE;
 		  VRef = 3*(float)VREFINT_CAL/(data[0]*SCALE);
 
-		  //Get Temperature data
 		  tempRaw = data[1];
 		  tempRaw *= SCALE;
-		  tempData = __HAL_ADC_CALC_TEMPERATURE(3300, tempRaw, ADC_RESOLUTION_12B);
-		  //FORMULA BELOW IS GIVING ME WRONG VALUES. PROBLEM IS HIGHLY LIKELY WITH TS_CAL1 AND TS_CAL2  MEMORY MAPPING
-//		  tempData = (float)((TS_CAL2_TEMP - TS_CAL1_TEMP))/((TS_CAL2 - TS_CAL1)) *
-//		  				  ((tempRaw - TS_CAL1)) + TS_CAL1_TEMP;
+		  tempData_1 = __HAL_ADC_CALC_TEMPERATURE(3300, tempRaw, ADC_RESOLUTION_12B);
+		  tempData_2 = (float) (TS_CAL2_TEMP - TS_CAL1_TEMP)/(TS_CAL2 - TS_CAL1) *
+				  ((tempRaw * SCALE) - TS_CAL1) + 30;
 
 		  HAL_ADC_Stop_DMA(&hadc1);
 #endif
