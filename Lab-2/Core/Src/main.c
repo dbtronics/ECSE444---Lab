@@ -36,8 +36,8 @@
 //Uncomment those MACROS below for program to execute ONLY
 //#define BLINK_LED
 //#define ADC_VREFINT
-#define ADC_TEMPSENSOR
-//#define TOGGLE
+//#define ADC_TEMPSENSOR
+#define TOGGLE
 
 #define TS_CAL1_TEMP 30 //FROM DATASHEET
 #define TS_CAL1 *((uint16_t*) 0x1FFF75A8) //FROM DATASHEET
@@ -120,6 +120,8 @@ int main(void)
   sConfig.SingleDiff = ADC_SINGLE_ENDED;
   sConfig.OffsetNumber = ADC_OFFSET_NONE;
   sConfig.Offset = 0;
+  sConfig.Rank = ADC_REGULAR_RANK_1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_640CYCLES_5;
 #endif
 
 #ifdef ADC_VREFINT
@@ -144,7 +146,7 @@ int main(void)
   float tempData_2;
 //  Initiazlie the config channel for temperature sensor beforehand
   sConfig.Channel = ADC_CHANNEL_TEMPSENSOR;
-  sConfig.Rank = ADC_REGULAR_RANK_2;
+  sConfig.Rank = ADC_REGULAR_RANK_1;
   sConfig.SamplingTime = ADC_SAMPLETIME_640CYCLES_5;
   sConfig.SingleDiff = ADC_SINGLE_ENDED;
   sConfig.OffsetNumber = ADC_OFFSET_NONE;
@@ -223,8 +225,6 @@ int main(void)
 //			  Get Vref Data if GREEN led is HIGH
 //			  Config channel for Vref here
 			  sConfig.Channel = ADC_CHANNEL_VREFINT;
-			  sConfig.Rank = ADC_REGULAR_RANK_1;
-			  sConfig.SamplingTime = ADC_SAMPLETIME_2CYCLES_5;
 
 //			  Set the channel here
 			  HAL_ADC_ConfigChannel(&hadc1, &sConfig);
@@ -247,8 +247,6 @@ int main(void)
 //			  Get Temperature sensor Data if GREEN led is LOW
 //			  Config channel for temperature sensor
 			  sConfig.Channel = ADC_CHANNEL_TEMPSENSOR;
-			  sConfig.Rank = ADC_REGULAR_RANK_2;
-			  sConfig.SamplingTime = ADC_SAMPLETIME_640CYCLES_5;
 
 //			  Set the channel here
 			  HAL_ADC_ConfigChannel(&hadc1, &sConfig);
@@ -364,11 +362,11 @@ static void MX_ADC1_Init(void)
   hadc1.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc1.Init.ScanConvMode = ADC_SCAN_ENABLE;
+  hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
   hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   hadc1.Init.LowPowerAutoWait = DISABLE;
   hadc1.Init.ContinuousConvMode = ENABLE;
-  hadc1.Init.NbrOfConversion = 2;
+  hadc1.Init.NbrOfConversion = 1;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
@@ -387,14 +385,6 @@ static void MX_ADC1_Init(void)
   sConfig.SingleDiff = ADC_SINGLE_ENDED;
   sConfig.OffsetNumber = ADC_OFFSET_NONE;
   sConfig.Offset = 0;
-  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /** Configure Regular Channel
-  */
-  sConfig.Channel = ADC_CHANNEL_TEMPSENSOR;
-  sConfig.Rank = ADC_REGULAR_RANK_2;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
