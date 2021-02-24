@@ -32,10 +32,12 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+//Defined MACROS
+//Uncomment those MACROS below for program to execute ONLY
 //#define BLINK_LED
-#define ADC_VREFINT
+//#define ADC_VREFINT
 //#define ADC_TEMPSENSOR
-//#define ADC_MULTI_CHANNEL
+#define TOGGLE
 
 #define TS_CAL1_TEMP 30 //FROM DATASHEET
 #define TS_CAL1 *((uint16_t*) 0x1FFF75A8) //FROM DATASHEET
@@ -52,15 +54,13 @@
 
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
-DMA_HandleTypeDef hdma_adc1;
-
+ADC_ChannelConfTypeDef sConfig = {0};
 /* USER CODE BEGIN PV */
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-static void MX_DMA_Init(void);
 static void MX_ADC1_Init(void);
 /* USER CODE BEGIN PFP */
 
@@ -99,29 +99,60 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_DMA_Init();
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
-  uint32_t data[2];
+  uint32_t data;
   HAL_ADC_Init(&hadc1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-#ifdef BLINK_LED
+//  If either of MACROS are defined then do the following initilization
+#if defined(BLINK_LED) || defined(TOGGLE)
   int changeState = 0;
-#endif
-
-#if defined(ADC_VREFINT) || defined(ADC_MULTI_CHANNEL)
   float VRefInt = 0;
   float VRef = 0;
-#endif
-
-#if defined(ADC_TEMPSENSOR) || defined(ADC_MULTI_CHANNEL)
   uint16_t tempRaw;
   float tempData_1;
   float tempData_2;
-  float tempData_3;
+//  Define common sConfig states for both channels to avoid redundancy
+  sConfig.SingleDiff = ADC_SINGLE_ENDED;
+  sConfig.OffsetNumber = ADC_OFFSET_NONE;
+  sConfig.Offset = 0;
+#endif
+
+#ifdef ADC_VREFINT
+  float VRefInt = 0;
+  float VRef = 0;
+//  Initialize the config channels for Vrefint beforehand
+  sConfig.Channel = ADC_CHANNEL_VREFINT;
+  sConfig.Rank = ADC_REGULAR_RANK_1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_2CYCLES_5;
+  sConfig.SingleDiff = ADC_SINGLE_ENDED;
+  sConfig.OffsetNumber = ADC_OFFSET_NONE;
+  sConfig.Offset = 0;
+//  Set the channel
+  HAL_ADC_ConfigChannel(&hadc1, &sConfig);
+//  Validate the channel
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) Error_Handler();
+#endif
+
+#ifdef ADC_TEMPSENSOR
+  uint16_t tempRaw;
+  float tempData_1;
+  float tempData_2;
+//  Initiazlie the config channel for temperature sensor beforehand
+  sConfig.Channel = ADC_CHANNEL_TEMPSENSOR;
+  sConfig.Rank = ADC_REGULAR_RANK_2;
+  sConfig.SamplingTime = ADC_SAMPLETIME_640CYCLES_5;
+  sConfig.SingleDiff = ADC_SINGLE_ENDED;
+  sConfig.OffsetNumber = ADC_OFFSET_NONE;
+  sConfig.Offset = 0;
+//  Set the channel
+  HAL_ADC_ConfigChannel(&hadc1, &sConfig);
+//  Validate the channel
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) Error_Handler();
+
 #endif
 
   while (1)
@@ -135,54 +166,113 @@ int main(void)
 				  HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
 				  changeState = 1;
 			  }
-		  } else { //this is only active if the button is not pressed. Allows for toggling
-			  changeState = 0;
-		  }
+	  } else { //this is only active if the button is not pressed. Allows for toggling
+		  changeState = 0;
+	  }
 #endif
 
-	  	  //get ADC value
-#ifdef ADC_VREFINT
-		  HAL_ADC_Start_DMA(&hadc1, data, 2);
+
+#ifdef ADC_VREFINT //If this is defined then execute Vrefint
+//	  	  Start and poll until the channel is ready
+	  	  HAL_ADC_Start(&hadc1);
 		  HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
-		  //Get internal voltage reference and voltage reference
-		  VRefInt = data[0]*3.3/4096*SCALE;
-		  VRef = 3*(float)VREFINT_CAL/(data[0]*SCALE);
+
+//		  Get internal voltage reference and voltage reference
+		  data = HAL_ADC_GetValue(&hadc1);
+		  VRefInt = data*3.3/4096*SCALE;
+		  VRef = 3*(float)VREFINT_CAL/(data*SCALE);
+
+//		  Stop the channel once ready
 		  HAL_ADC_Stop(&hadc1);
 #endif
 
-#ifdef ADC_TEMPSENSOR
-		  HAL_ADC_Start_DMA(&hadc1, data, 2);
+#ifdef ADC_TEMPSENSOR //If this is defined then execute temperature sensor
+//		  Start and poll to get the channel ready
+		  HAL_ADC_Start(&hadc1);
 		  HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
 
-		  //Get Temperature data
-		  tempRaw = data[1];
-		  tempRaw *= SCALE;
+//		  Get Temperature data
+		  data = HAL_ADC_GetValue(&hadc1);
+		  tempRaw = data;
+
+//		  Used both internal method of the HAL class and done manual calculation
+//		  Used to verify that both data are close together for accuracy
 		  tempData_1 = __HAL_ADC_CALC_TEMPERATURE(3300, tempRaw, ADC_RESOLUTION_12B);
 		  tempData_2 = (float) (TS_CAL2_TEMP - TS_CAL1_TEMP)/(TS_CAL2 - TS_CAL1) *
 				  ((tempRaw * SCALE) - TS_CAL1) + 30;
 
-		  HAL_ADC_Stop_DMA(&hadc1);
+//		  Stop the channel once done
+		  HAL_ADC_Stop(&hadc1);
 
 #endif
 
-#ifdef ADC_MULTI_CHANNEL
-		  //THIS IS ACCESSED USING DMA WITH data AS A BUFFER
-		  HAL_ADC_Start_DMA(&hadc1, data, 2);
-		  HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
+#ifdef TOGGLE //If this is defined then execute Toggle
+//		  Check if blue button has been pressed
+		  if(!HAL_GPIO_ReadPin(BUTTON_BLUE_GPIO_Port, BUTTON_BLUE_Pin)){
+				  if(!changeState){ //prevents toggling if button is on hold
+					  HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
+					  changeState = 1;
+				  }
+		  } else { //this is only active if the button is not pressed. Allows for toggling
+			  changeState = 0;
+		  }
 
-		  //Get internal voltage reference and voltage reference
-		  VRefInt = data[0]*3.3/4096*SCALE;
-		  VRef = 3*(float)VREFINT_CAL/(data[0]*SCALE);
+//		  Check if LED is lit
+		  if (HAL_GPIO_ReadPin(LED_GREEN_GPIO_Port, LED_GREEN_Pin)){
+//			  Get Vref Data if GREEN led is HIGH
+//			  Config channel for Vref here
+			  sConfig.Channel = ADC_CHANNEL_VREFINT;
+			  sConfig.Rank = ADC_REGULAR_RANK_1;
+			  sConfig.SamplingTime = ADC_SAMPLETIME_2CYCLES_5;
 
-		  tempRaw = data[1];
-		  tempRaw *= SCALE;
-		  tempData_1 = __HAL_ADC_CALC_TEMPERATURE(3300, tempRaw, ADC_RESOLUTION_12B);
-		  tempData_2 = (float) (TS_CAL2_TEMP - TS_CAL1_TEMP)/(TS_CAL2 - TS_CAL1) *
-				  ((tempRaw * SCALE) - TS_CAL1) + 30;
+//			  Set the channel here
+			  HAL_ADC_ConfigChannel(&hadc1, &sConfig);
 
-		  HAL_ADC_Stop_DMA(&hadc1);
+//			  Validate the channel
+			  if(HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) Error_Handler();
+
+//			  Start the ADC channel and poll until the channel is ready
+			  HAL_ADC_Start(&hadc1);
+			  HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
+
+//			  Get internal voltage reference and voltage reference
+			  data = HAL_ADC_GetValue(&hadc1);
+			  VRefInt = data*3.3/4096*SCALE;
+			  VRef = 3*(float)VREFINT_CAL/(data*SCALE); //Formula from datasheet
+
+//			  Stop the channel once done
+			  HAL_ADC_Stop(&hadc1);
+		  } else {
+//			  Get Temperature sensor Data if GREEN led is LOW
+//			  Config channel for temperature sensor
+			  sConfig.Channel = ADC_CHANNEL_TEMPSENSOR;
+			  sConfig.Rank = ADC_REGULAR_RANK_2;
+			  sConfig.SamplingTime = ADC_SAMPLETIME_640CYCLES_5;
+
+//			  Set the channel here
+			  HAL_ADC_ConfigChannel(&hadc1, &sConfig);
+
+//			  Validate the channel here
+			  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) Error_Handler();
+
+//			  Start the ADC channel and pol until the channel is ready
+			  HAL_ADC_Start(&hadc1);
+			  HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
+
+//			  Get temperature sensor readings
+			  data = HAL_ADC_GetValue(&hadc1);
+			  tempRaw = data;
+
+//			  Used both internal method of the HAL class and done manual calculation
+//			  Used to verify that both data are close together for accuracy
+			  tempData_1 = __HAL_ADC_CALC_TEMPERATURE(3300, tempRaw, ADC_RESOLUTION_12B);
+			  tempData_2 = (float) (TS_CAL2_TEMP - TS_CAL1_TEMP)/(TS_CAL2 - TS_CAL1) *
+			  				  ((tempRaw * SCALE) - TS_CAL1) + 30;
+
+//			  Stop the channel once done
+			  HAL_ADC_Stop(&hadc1);
+		  }
 #endif
-
 
   }
   /* USER CODE END 3 */
@@ -312,23 +402,6 @@ static void MX_ADC1_Init(void)
   /* USER CODE BEGIN ADC1_Init 2 */
 
   /* USER CODE END ADC1_Init 2 */
-
-}
-
-/**
-  * Enable DMA controller clock
-  */
-static void MX_DMA_Init(void)
-{
-
-  /* DMA controller clock enable */
-  __HAL_RCC_DMAMUX1_CLK_ENABLE();
-  __HAL_RCC_DMA1_CLK_ENABLE();
-
-  /* DMA interrupt init */
-  /* DMA1_Channel1_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 
 }
 
