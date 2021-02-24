@@ -1476,7 +1476,7 @@ HAL_StatusTypeDef HAL_ADC_PollForConversion(ADC_HandleTypeDef *hadc, uint32_t Ti
   tickstart = HAL_GetTick();
 
   /* Wait until End of unitary conversion or sequence conversions flag is raised */
-    while ((hadc->Instance->ISR & tmp_Flag_End) == 0UL)
+  while ((hadc->Instance->ISR & tmp_Flag_End) == 0UL)
   {
     /* Check if timeout is disabled (set to infinite wait) */
     if (Timeout != HAL_MAX_DELAY)
