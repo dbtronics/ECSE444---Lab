@@ -36,8 +36,8 @@
 //Uncomment those MACROS below for program to execute ONLY
 //#define BLINK_LED
 //#define ADC_VREFINT
-//#define ADC_TEMPSENSOR
-#define TOGGLE
+#define ADC_TEMPSENSOR
+//#define TOGGLE
 
 #define TS_CAL1_TEMP 30 //FROM DATASHEET
 #define TS_CAL1 *((uint16_t*) 0x1FFF75A8) //FROM DATASHEET
@@ -104,6 +104,8 @@ int main(void)
   /* USER CODE BEGIN 2 */
   uint32_t data;
   HAL_ADC_Init(&hadc1);
+  HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
+  HAL_Delay(1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -177,12 +179,13 @@ int main(void)
 
 #ifdef ADC_VREFINT //If this is defined then execute Vrefint
 //	  	  Start and poll until the channel is ready
+	      ADC_Enable(&hadc1);
 	  	  HAL_ADC_Start(&hadc1);
 		  HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
 
 //		  Get internal voltage reference and voltage reference
 		  data = HAL_ADC_GetValue(&hadc1);
-		  VRefInt = data*3.3/4096*SCALE;
+		  VRefInt = data*3.3/4095*SCALE;
 		  VRef = 3*(float)VREFINT_CAL/(data*SCALE);
 
 //		  Stop the channel once ready
@@ -191,6 +194,7 @@ int main(void)
 
 #ifdef ADC_TEMPSENSOR //If this is defined then execute temperature sensor
 //		  Start and poll to get the channel ready
+		  ADC_Enable(&hadc1);
 		  HAL_ADC_Start(&hadc1);
 		  HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
 
@@ -206,10 +210,13 @@ int main(void)
 
 //		  Stop the channel once done
 		  HAL_ADC_Stop(&hadc1);
+		  ADC_Disable(&hadc1);
 
 #endif
 
 #ifdef TOGGLE //If this is defined then execute Toggle
+		  HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
+		  HAL_Delay(1);
 //		  Check if blue button has been pressed
 		  if(!HAL_GPIO_ReadPin(BUTTON_BLUE_GPIO_Port, BUTTON_BLUE_Pin)){
 				  if(!changeState){ //prevents toggling if button is on hold
@@ -224,15 +231,17 @@ int main(void)
 		  if (HAL_GPIO_ReadPin(LED_GREEN_GPIO_Port, LED_GREEN_Pin)){
 //			  Get Vref Data if GREEN led is HIGH
 //			  Config channel for Vref here
-			  sConfig.Channel = ADC_CHANNEL_VREFINT;
+//			  HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
+//			  HAL_Delay(1);
 
+			  sConfig.Channel = ADC_CHANNEL_VREFINT;
 //			  Set the channel here
 			  HAL_ADC_ConfigChannel(&hadc1, &sConfig);
 
 //			  Validate the channel
 			  if(HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) Error_Handler();
-
 //			  Start the ADC channel and poll until the channel is ready
+			  ADC_Enable(&hadc1);
 			  HAL_ADC_Start(&hadc1);
 			  HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
 
@@ -243,9 +252,13 @@ int main(void)
 
 //			  Stop the channel once done
 			  HAL_ADC_Stop(&hadc1);
+			  ADC_Disable(&hadc1);
 		  } else {
 //			  Get Temperature sensor Data if GREEN led is LOW
 //			  Config channel for temperature sensor
+//			  HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
+//			  HAL_Delay(1);
+
 			  sConfig.Channel = ADC_CHANNEL_TEMPSENSOR;
 
 //			  Set the channel here
@@ -255,6 +268,7 @@ int main(void)
 			  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) Error_Handler();
 
 //			  Start the ADC channel and pol until the channel is ready
+			  ADC_Enable(&hadc1);
 			  HAL_ADC_Start(&hadc1);
 			  HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
 
@@ -267,9 +281,11 @@ int main(void)
 			  tempData_1 = __HAL_ADC_CALC_TEMPERATURE(3300, tempRaw, ADC_RESOLUTION_12B);
 			  tempData_2 = (float) (TS_CAL2_TEMP - TS_CAL1_TEMP)/(TS_CAL2 - TS_CAL1) *
 			  				  ((tempRaw * SCALE) - TS_CAL1) + 30;
+//			  tempData_2 = ((3.3*ADC_VAL[2]/4095 - V25)/Avg_Slope)+25;
 
 //			  Stop the channel once done
 			  HAL_ADC_Stop(&hadc1);
+			  ADC_Disable(&hadc1);
 		  }
 #endif
 
