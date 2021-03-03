@@ -32,6 +32,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+//#define SAWTOOTH
+#define TRIANGLE
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -102,24 +104,35 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 //	  Saw tooth wave increment
+#ifdef SAWTOOTH
 	sawTooth = 0;
 	duration = HAL_GetTick();
 	for (int i = 0; i < 0xFFFF; i++) {
 		sawTooth++;
 	}
+	//Required to add additional 3 ms of delay
+	//2 ms for the delay and 1 ms of additional time to execute it --> 3 ms
+	HAL_Delay(2);
 	duration = HAL_GetTick() - duration;
 	frequencySaw = (float) 1/duration * 1000;
+  //	sawTooth = 0;
+#endif
 
+#ifdef TRIANGLE
 	duration = HAL_GetTick();
+	// Need to add 2 jumps for inclination and declination
 	for (int i = 2; i < 0xFFFF; i=i+2) {
 		triangle = triangle + 2;
 	}
-
+	//Required to add additional 3 ms of delay
+	//2 ms for the delay and 1 ms of additional time to execute it --> 3 ms
+	HAL_Delay(2);
 	for (int  i= 2;  i< 0xFFFF; i=i+2) {
 		triangle = triangle - 2;
 	}
 	duration = HAL_GetTick() - duration;
 	frequencyTri = (float) 1/duration * 1000;
+#endif
   }
   /* USER CODE END 3 */
 }
