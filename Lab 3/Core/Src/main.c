@@ -56,7 +56,9 @@ static void MX_DAC1_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+uint16_t sawTooth, triangle;
+uint32_t duration;
+float frequencySaw, frequencyTri;
 /* USER CODE END 0 */
 
 /**
@@ -99,6 +101,25 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+//	  Saw tooth wave increment
+	sawTooth = 0;
+	duration = HAL_GetTick();
+	for (int i = 0; i < 0xFFFF; i++) {
+		sawTooth++;
+	}
+	duration = HAL_GetTick() - duration;
+	frequencySaw = (float) 1/duration * 1000;
+
+	duration = HAL_GetTick();
+	for (int i = 2; i < 0xFFFF; i=i+2) {
+		triangle = triangle + 2;
+	}
+
+	for (int  i= 2;  i< 0xFFFF; i=i+2) {
+		triangle = triangle - 2;
+	}
+	duration = HAL_GetTick() - duration;
+	frequencyTri = (float) 1/duration * 1000;
   }
   /* USER CODE END 3 */
 }
