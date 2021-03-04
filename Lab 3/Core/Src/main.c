@@ -94,6 +94,10 @@ int main(void)
   MX_DAC1_Init();
   /* USER CODE BEGIN 2 */
 
+  //Start DAC output channels
+  HAL_DAC_Start(&hdac1, DAC_CHANNEL_1);
+  HAL_DAC_Start(&hdac1, DAC_CHANNEL_2);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -119,19 +123,17 @@ int main(void)
 #endif
 
 #ifdef TRIANGLE
-	duration = HAL_GetTick();
-	// Need to add 2 jumps for inclination and declination
-	for (int i = 2; i < 0xFFFF; i=i+2) {
-		triangle = triangle + 2;
+	for (uint16_t i = 0; i<16; (i++)%16){
+		if (i == 8){
+			triangle = 4095; //maximum value for 12 bit resolution
+		}else if (i < 8){
+			triangle = i * 512; //unit interval for 12 bit on values < (16/2)ms period
+		}else{
+			triangle = 4096 - ((i % 8) * 512);
+		}
+		HAL_Delay(2);
 	}
-	//Required to add additional 3 ms of delay
-	//2 ms for the delay and 1 ms of additional time to execute it --> 3 ms
-	HAL_Delay(2);
-	for (int  i= 2;  i< 0xFFFF; i=i+2) {
-		triangle = triangle - 2;
-	}
-	duration = HAL_GetTick() - duration;
-	frequencyTri = (float) 1/duration * 1000;
+
 #endif
   }
   /* USER CODE END 3 */
