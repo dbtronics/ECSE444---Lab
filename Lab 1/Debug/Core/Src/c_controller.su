@@ -1,0 +1,2 @@
+c_controller.c:6:7:c_kalmanfilter	16	static
+c_controller.c:14:6:c_analysis	128	dynamic
