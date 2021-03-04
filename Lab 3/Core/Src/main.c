@@ -32,8 +32,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-//#define SAWTOOTH
-#define TRIANGLE
+#define SAWTOOTH
+//#define TRIANGLE
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -98,6 +98,22 @@ int main(void)
   HAL_DAC_Start(&hdac1, DAC_CHANNEL_1);
   HAL_DAC_Start(&hdac1, DAC_CHANNEL_2);
 
+  uint16_t triangleWave[16];
+  uint16_t sawToothWave[16];
+
+  uint16_t j = 0;
+
+  for (uint16_t i = 0; i<16; i++){
+  		if (i == 8){
+  			triangleWave[i] = 4095; //maximum value for 12 bit resolution
+  		}else if (i < 8){
+  			triangleWave[i] = i * 512; //unit interval for 12 bit on values < (16/2)ms period
+  		}else{
+  			triangleWave[i] = 4096 - ((i % 8) * 512);
+  		}
+  		sawToothWave[i] = i * 256; //4096/16ms = 256
+  	}
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -109,31 +125,15 @@ int main(void)
     /* USER CODE BEGIN 3 */
 //	  Saw tooth wave increment
 #ifdef SAWTOOTH
-	sawTooth = 0;
-	duration = HAL_GetTick();
-	for (int i = 0; i < 0xFFFF; i++) {
-		sawTooth++;
-	}
-	//Required to add additional 3 ms of delay
-	//2 ms for the delay and 1 ms of additional time to execute it --> 3 ms
-	HAL_Delay(2);
-	duration = HAL_GetTick() - duration;
-	frequencySaw = (float) 1/duration * 1000;
-  //	sawTooth = 0;
+	  sawTooth = sawToothWave[j];
+	  j = (j+1)%16;
+	  HAL_Delay(2);
 #endif
 
 #ifdef TRIANGLE
-	for (uint16_t i = 0; i<16; (i++)%16){
-		if (i == 8){
-			triangle = 4095; //maximum value for 12 bit resolution
-		}else if (i < 8){
-			triangle = i * 512; //unit interval for 12 bit on values < (16/2)ms period
-		}else{
-			triangle = 4096 - ((i % 8) * 512);
-		}
-		HAL_Delay(2);
-	}
-
+	  triangle = triangleWave[j];
+	  j = (j+1)%16;
+	  HAL_Delay(2);
 #endif
   }
   /* USER CODE END 3 */
