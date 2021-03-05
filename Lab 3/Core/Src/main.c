@@ -101,6 +101,7 @@ int main(void)
   uint16_t triangleWave[16];
   uint16_t sawToothWave[16];
 
+  float var = 0;
   uint16_t j = 0;
 
   for (uint16_t i = 0; i<16; i++){
@@ -126,13 +127,18 @@ int main(void)
 //	  Saw tooth wave increment
 #ifdef SAWTOOTH
 	  sawTooth = sawToothWave[j];
+	  var = sawTooth * (0xFFF + 1)/3.3;
 	  j = (j+1)%16;
+	  HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_2, DAC_ALIGN_12B_R, var);
 	  HAL_Delay(2);
 #endif
 
 #ifdef TRIANGLE
+
 	  triangle = triangleWave[j];
+	  var = triangle * (0xFFF + 1)/3.3;
 	  j = (j+1)%16;
+	  HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, var);
 	  HAL_Delay(2);
 #endif
   }
