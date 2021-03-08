@@ -22,7 +22,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "arm_math.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -33,7 +33,8 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 //#define SAWTOOTH
-#define TRIANGLE
+//#define TRIANGLE
+#define SINE
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -100,6 +101,8 @@ int main(void)
 
   uint16_t triangleWave[16];
   uint16_t sawToothWave[16];
+  float sine[16];
+  float sin;
 
   uint16_t j = 0;
 
@@ -112,6 +115,7 @@ int main(void)
   			triangleWave[i] = 4096 - ((i % 8) * 512);
   		}
   		sawToothWave[i] = i * 256; //4096/16ms = 256
+  		sine[i] = (float) 2047.5 * (1 + arm_sin_f32((float) (2*PI*i)/16));
   	}
 
   /* USER CODE END 2 */
@@ -136,6 +140,13 @@ int main(void)
 	  triangle = triangleWave[j];
 	  j = (j+1)%16;
 	  HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, triangle);
+	  HAL_Delay(1);
+#endif
+
+#ifdef SINE
+	  sin = sine[j];
+	  j = (j+1)%16;
+	  HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, sin);
 	  HAL_Delay(1);
 #endif
   }
