@@ -32,8 +32,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-//#define SAWTOOTH
-//#define TRIANGLE
+#define SAWTOOTH
+#define TRIANGLE
 #define SINE
 /* USER CODE END PD */
 
@@ -132,22 +132,21 @@ int main(void)
 	  sawTooth = sawToothWave[j];
 	  j = (j+1)%16;
 	  HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_2, DAC_ALIGN_12B_R, sawTooth);
-	  HAL_Delay(1);
+	  HAL_Delay(1/2);
 #endif
 
 #ifdef TRIANGLE
-
 	  triangle = triangleWave[j];
 	  j = (j+1)%16;
 	  HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, triangle);
-	  HAL_Delay(1);
+	  HAL_Delay(1/2);
 #endif
 
 #ifdef SINE
 	  sin = sine[j];
 	  j = (j+1)%16;
 	  HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, sin);
-	  HAL_Delay(1);
+	  HAL_Delay(1/2);
 #endif
   }
   /* USER CODE END 3 */
