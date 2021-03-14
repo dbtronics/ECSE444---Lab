@@ -35,6 +35,7 @@
 #define SAWTOOTH
 #define TRIANGLE
 #define SINE
+#define PART2
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -44,6 +45,9 @@
 
 /* Private variables ---------------------------------------------------------*/
 DAC_HandleTypeDef hdac1;
+DMA_HandleTypeDef hdma_dac1_ch1;
+
+TIM_HandleTypeDef htim2;
 
 /* USER CODE BEGIN PV */
 
@@ -52,7 +56,9 @@ DAC_HandleTypeDef hdac1;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_DAC1_Init(void);
+static void MX_TIM2_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -62,6 +68,12 @@ static void MX_DAC1_Init(void);
 uint16_t sawTooth, triangle;
 uint32_t duration;
 float frequencySaw, frequencyTri;
+
+uint32_t sine2kHz_index = 0;
+uint32_t *sineWaves; //pointer to sineWave
+
+float sine2kHz[60]; //variable to keep one period of DAC sine values
+
 /* USER CODE END 0 */
 
 /**
@@ -92,31 +104,50 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_DAC1_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
+
+//  start Timer
+  HAL_TIM_Base_Start_IT(&htim2);
 
   //Start DAC output channels
   HAL_DAC_Start(&hdac1, DAC_CHANNEL_1);
   HAL_DAC_Start(&hdac1, DAC_CHANNEL_2);
 
-  uint16_t triangleWave[16];
-  uint16_t sawToothWave[16];
-  float sine[16];
-  float sin;
 
-  uint16_t j = 0;
 
-  for (uint16_t i = 0; i<16; i++){
-  		if (i == 8){
-  			triangleWave[i] = 4095; //maximum value for 12 bit resolution
-  		}else if (i < 8){
-  			triangleWave[i] = i * 512; //unit interval for 12 bit on values < (16/2)ms period
-  		}else{
-  			triangleWave[i] = 4096 - ((i % 8) * 512);
-  		}
-  		sawToothWave[i] = i * 256; //4096/16ms = 256
-  		sine[i] = (float) 2047.5 * (1 + arm_sin_f32((float) (2*PI*i)/16));
-  	}
+//  uint16_t triangleWave[16];
+//  uint16_t sawToothWave[16];
+//  float sine[16];
+//  float sin;
+
+//  uint16_t j = 0;
+
+//  for (uint16_t i = 0; i<16; i++){
+//  		if (i == 8){
+//  			triangleWave[i] = 4095; //maximum value for 12 bit resolution
+//  		}else if (i < 8){
+//  			triangleWave[i] = i * 512; //unit interval for 12 bit on values < (16/2)ms period
+//  		}else{
+//  			triangleWave[i] = 4096 - ((i % 8) * 512);
+//  		}
+//  		sawToothWave[i] = i * 256; //4096/16ms = 256
+//  		sine[i] = (float) 2047.5 * (1 + arm_sin_f32((float) (2*PI*i)/16));
+//  	}
+
+  //Our clock frequency is 120MHz. TIM2 counter period is 1000
+  //scaling 120 DAC samples for the channel when timer interrupts corresponds to
+  //a sine period of 1khz as each sample gets read per 1ms.
+  //Consequently, scaling 60 DAC samples for the channel -> 2khz sine wave
+  for (uint32_t i = 0; i < 60; i++) {
+	  sine2kHz[i] = (float)1365.0 * (1 + arm_sin_f32((float) (2*PI*i)/60));//vary DAC values over 2/3 of range ie (4095*2)/3 = 2730
+	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  //(2730/2) = 1365
+  }
+
+  sineWaves[0] = sine2kHz; //point to respective sine wave
+
 
   /* USER CODE END 2 */
 
@@ -127,27 +158,31 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-//	  Saw tooth wave increment
-#ifdef SAWTOOTH
-	  sawTooth = sawToothWave[j];
-	  j = (j+1)%16;
-	  HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_2, DAC_ALIGN_12B_R, sawTooth);
-	  HAL_Delay(1/2);
-#endif
 
-#ifdef TRIANGLE
-	  triangle = triangleWave[j];
-	  j = (j+1)%16;
-	  HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, triangle);
-	  HAL_Delay(1/2);
-#endif
+//Part 2 works with interrupts so while loop in this part should be empty
 
-#ifdef SINE
-	  sin = sine[j];
-	  j = (j+1)%16;
-	  HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, sin);
-	  HAL_Delay(1/2);
-#endif
+	  /** Part 1 **/
+////	  Saw tooth wave increment
+//#ifdef SAWTOOTH
+//	  sawTooth = sawToothWave[j];
+//	  j = (j+1)%16;
+//	  HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_2, DAC_ALIGN_12B_R, sawTooth);
+//	  HAL_Delay(1/2);
+//#endif
+//
+//#ifdef TRIANGLE
+//	  triangle = triangleWave[j];
+//	  j = (j+1)%16;
+//	  HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, triangle);
+//	  HAL_Delay(1/2);
+//#endif
+//
+//#ifdef SINE
+//	  sin = sine[j];
+//	  j = (j+1)%16;
+//	  HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, sin);
+//	  HAL_Delay(1/2);
+//#endif
   }
   /* USER CODE END 3 */
 }
@@ -227,19 +262,12 @@ static void MX_DAC1_Init(void)
   /** DAC channel OUT1 config
   */
   sConfig.DAC_SampleAndHold = DAC_SAMPLEANDHOLD_DISABLE;
-  sConfig.DAC_Trigger = DAC_TRIGGER_NONE;
+  sConfig.DAC_Trigger = DAC_TRIGGER_T2_TRGO;
   sConfig.DAC_HighFrequency = DAC_HIGH_FREQUENCY_INTERFACE_MODE_DISABLE;
   sConfig.DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE;
   sConfig.DAC_ConnectOnChipPeripheral = DAC_CHIPCONNECT_DISABLE;
   sConfig.DAC_UserTrimming = DAC_TRIMMING_FACTORY;
   if (HAL_DAC_ConfigChannel(&hdac1, &sConfig, DAC_CHANNEL_1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /** DAC channel OUT2 config
-  */
-  sConfig.DAC_ConnectOnChipPeripheral = DAC_CHIPCONNECT_DISABLE;
-  if (HAL_DAC_ConfigChannel(&hdac1, &sConfig, DAC_CHANNEL_2) != HAL_OK)
   {
     Error_Handler();
   }
@@ -250,20 +278,113 @@ static void MX_DAC1_Init(void)
 }
 
 /**
+  * @brief TIM2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM2_Init(void)
+{
+
+  /* USER CODE BEGIN TIM2_Init 0 */
+
+  /* USER CODE END TIM2_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 0;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 1000;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
+
+  /* USER CODE END TIM2_Init 2 */
+
+}
+
+/**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMAMUX1_CLK_ENABLE();
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Channel1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
   */
 static void MX_GPIO_Init(void)
 {
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : BUTTON_BLUE_Pin */
+  GPIO_InitStruct.Pin = BUTTON_BLUE_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(BUTTON_BLUE_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : LED_Pin */
+  GPIO_InitStruct.Pin = LED_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(LED_GPIO_Port, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+	HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+}
 
+//For Step 1 and Step 2
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+	HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, sine2kHz[sine2kHz_index]);
+	sine2kHz_index = (sine2kHz_index + 1) % 60;
+}
 /* USER CODE END 4 */
 
 /**
