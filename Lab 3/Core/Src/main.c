@@ -70,9 +70,14 @@ uint32_t duration;
 float frequencySaw, frequencyTri;
 
 uint32_t sine2kHz_index = 0;
-uint32_t *sineWaves; //pointer to sineWave
+uint32_t sample_index = 0;
 
-float sine2kHz[60]; //variable to keep one period of DAC sine values
+uint32_t *sineWaves[3]; //pointer to sineWave arrays
+uint32_t no_samples_array[3] = {120, 60, 30};
+
+float sine1kHz[120]; //variable to keep one period of DAC sine values
+float sine2kHz[60];
+float sine4kHz[30];
 
 /* USER CODE END 0 */
 
@@ -116,8 +121,6 @@ int main(void)
   HAL_DAC_Start(&hdac1, DAC_CHANNEL_1);
   HAL_DAC_Start(&hdac1, DAC_CHANNEL_2);
 
-
-
 //  uint16_t triangleWave[16];
 //  uint16_t sawToothWave[16];
 //  float sine[16];
@@ -137,17 +140,26 @@ int main(void)
 //  		sine[i] = (float) 2047.5 * (1 + arm_sin_f32((float) (2*PI*i)/16));
 //  	}
 
+  /**----PART2 ------**/
+
   //Our clock frequency is 120MHz. TIM2 counter period is 1000
   //scaling 120 DAC samples for the channel when timer interrupts corresponds to
   //a sine period of 1khz as each sample gets read per 1ms.
   //Consequently, scaling 60 DAC samples for the channel -> 2khz sine wave
-  for (uint32_t i = 0; i < 60; i++) {
-	  sine2kHz[i] = (float)1365.0 * (1 + arm_sin_f32((float) (2*PI*i)/60));//vary DAC values over 2/3 of range ie (4095*2)/3 = 2730
-	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  //(2730/2) = 1365
-  }
+  for (uint32_t i = 0; i < 120; i++) {
+  	  sine1kHz[i] = (float)1365.0 * (1 + arm_sin_f32((float) (2*PI*i)/120)); //vary DAC values over 2/3 of range ie (4095*2)/3 = 2730
+  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	 //(2730/2) = 1365
+    }
+    for (uint32_t i = 0; i < 60; i++) {
+  	  sine2kHz[i] = (float)1365.0 * (1 + arm_sin_f32((float) (2*PI*i)/60));
+    }
+    for (uint32_t i = 0; i < 30; i++) {
+  	  sine4kHz[i] = (float)1365.0 * (1 + arm_sin_f32((float) (2*PI*i)/30));
+    }
 
-  sineWaves[0] = sine2kHz; //point to respective sine wave
-
+    sineWaves[0] = sine1kHz; //point to respective sine wave
+    sineWaves[1] = sine2kHz;
+    sineWaves[2] = sine4kHz;
 
   /* USER CODE END 2 */
 
@@ -378,13 +390,20 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+
+	// stop previous DMA,
+	HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_1);
+	//start new DMA channel with new sinewave values
+	HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, sineWaves[sample_index], no_samples_array[sample_index], DAC_ALIGN_12B_R);
+	//update index to navigate to next sinewave array (1khz -> 2khz -> 4khz ->...)
+	sample_index = (sample_index + 1) % 3;
 }
 
-//For Step 1 and Step 2
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
-	HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, sine2kHz[sine2kHz_index]);
-	sine2kHz_index = (sine2kHz_index + 1) % 60;
-}
+//Only needed for Step 1 and Step 2
+//void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+//	HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, sine2kHz[sine2kHz_index]);
+//	sine2kHz_index = (sine2kHz_index + 1) % 60;
+//}
 /* USER CODE END 4 */
 
 /**
