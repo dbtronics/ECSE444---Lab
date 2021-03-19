@@ -116,48 +116,28 @@ int main(void)
 
 //  start Timer
   HAL_TIM_Base_Start_IT(&htim2);
-
   //Start DAC output channels
   HAL_DAC_Start(&hdac1, DAC_CHANNEL_1);
-  HAL_DAC_Start(&hdac1, DAC_CHANNEL_2);
-
-//  uint16_t triangleWave[16];
-//  uint16_t sawToothWave[16];
-//  float sine[16];
-//  float sin;
-
-//  uint16_t j = 0;
-
-//  for (uint16_t i = 0; i<16; i++){
-//  		if (i == 8){
-//  			triangleWave[i] = 4095; //maximum value for 12 bit resolution
-//  		}else if (i < 8){
-//  			triangleWave[i] = i * 512; //unit interval for 12 bit on values < (16/2)ms period
-//  		}else{
-//  			triangleWave[i] = 4096 - ((i % 8) * 512);
-//  		}
-//  		sawToothWave[i] = i * 256; //4096/16ms = 256
-//  		sine[i] = (float) 2047.5 * (1 + arm_sin_f32((float) (2*PI*i)/16));
-//  	}
 
   /**----PART2 ------**/
-
   //Our clock frequency is 120MHz. TIM2 counter period is 1000
   //scaling 120 DAC samples for the channel when timer interrupts corresponds to
   //a sine period of 1khz as each sample gets read per 1ms.
   //Consequently, scaling 60 DAC samples for the channel -> 2khz sine wave
-  for (uint32_t i = 0; i < 120; i++) {
-  	  sine1kHz[i] = (float)1365.0 * (1 + arm_sin_f32((float) (2*PI*i)/120)); //vary DAC values over 2/3 of range ie (4095*2)/3 = 2730
-  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	 //(2730/2) = 1365
-    }
-    for (uint32_t i = 0; i < 60; i++) {
-  	  sine2kHz[i] = (float)1365.0 * (1 + arm_sin_f32((float) (2*PI*i)/60));
-    }
-    for (uint32_t i = 0; i < 30; i++) {
-  	  sine4kHz[i] = (float)1365.0 * (1 + arm_sin_f32((float) (2*PI*i)/30));
-    }
 
-    sineWaves[0] = sine1kHz; //point to respective sine wave
+  	for (uint32_t i = 0; i < 120; i++) {
+  	  sine1kHz[i] = (float)1365.0 * (1 + arm_sin_f32((float) (2*PI*i)/120));
+  	  //vary DAC values over 2/3 of range ie (4095*2)/3 = 2730
+  	  //(2730/2) = 1365
+	}
+	for (uint32_t i = 0; i < 60; i++) {
+	  sine2kHz[i] = (float)1365.0 * (1 + arm_sin_f32((float) (2*PI*i)/60));
+	}
+	for (uint32_t i = 0; i < 30; i++) {
+	  sine4kHz[i] = (float)1365.0 * (1 + arm_sin_f32((float) (2*PI*i)/30));
+	}
+	//*sineWave -> points to respective sine wave
+    sineWaves[0] = sine1kHz;
     sineWaves[1] = sine2kHz;
     sineWaves[2] = sine4kHz;
 
@@ -167,34 +147,12 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+//Part 2 works with interrupts so while loop in this part should be empty
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
 
-//Part 2 works with interrupts so while loop in this part should be empty
 
-	  /** Part 1 **/
-////	  Saw tooth wave increment
-//#ifdef SAWTOOTH
-//	  sawTooth = sawToothWave[j];
-//	  j = (j+1)%16;
-//	  HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_2, DAC_ALIGN_12B_R, sawTooth);
-//	  HAL_Delay(1/2);
-//#endif
-//
-//#ifdef TRIANGLE
-//	  triangle = triangleWave[j];
-//	  j = (j+1)%16;
-//	  HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, triangle);
-//	  HAL_Delay(1/2);
-//#endif
-//
-//#ifdef SINE
-//	  sin = sine[j];
-//	  j = (j+1)%16;
-//	  HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, sin);
-//	  HAL_Delay(1/2);
-//#endif
   }
   /* USER CODE END 3 */
 }
@@ -394,16 +352,17 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	// stop previous DMA,
 	HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_1);
 	//start new DMA channel with new sinewave values
-	HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, sineWaves[sample_index], no_samples_array[sample_index], DAC_ALIGN_12B_R);
+	HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, sineWaves[sample_index],
+					no_samples_array[sample_index], DAC_ALIGN_12B_R);
 	//update index to navigate to next sinewave array (1khz -> 2khz -> 4khz ->...)
 	sample_index = (sample_index + 1) % 3;
 }
 
 //Only needed for Step 1 and Step 2
-//void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
-//	HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, sine2kHz[sine2kHz_index]);
-//	sine2kHz_index = (sine2kHz_index + 1) % 60;
-//}
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+	HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, sine2kHz[sine2kHz_index]);
+	sine2kHz_index = (sine2kHz_index + 1) % 60;
+}
 /* USER CODE END 4 */
 
 /**
