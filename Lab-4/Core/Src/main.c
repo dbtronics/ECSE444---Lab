@@ -39,6 +39,9 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define I2C_UART
+//#define MODE_CHANGE
+//#define FREE_RTOS
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -56,7 +59,7 @@ osThreadId defaultTaskHandle;
 char str[100];
 uint32_t currentMode = 0;
 
-//Part4
+#ifdef FREE_RTOS
 osMutexId mutex_id;
 osThreadId transmitTaskHandle;
 osThreadId readSensorTaskHandle;
@@ -65,6 +68,7 @@ int16_t magneto[3];
 int16_t accelero[3];
 float hsensor;
 float gyro[3];
+#endif
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -116,25 +120,31 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 
-//  BSP_ACCELERO_Init();
-//  BSP_GYRO_Init();
-//  BSP_MAGNETO_Init();
-//  BSP_HSENSOR_Init();
+#ifdef I2C_UART || MODE_CHANGE
+  BSP_ACCELERO_Init();
+  BSP_GYRO_Init();
+  BSP_MAGNETO_Init();
+  BSP_HSENSOR_Init();
+#endif
 
   //initialize UART
   HAL_UART_Init(&huart1);
 
-//  int16_t magneto[3];
-//  int16_t accelero[3];
-//  float hsensor;
-//  float gyro[3];
+#ifdef I2C_UART || MODE_CHANGE
+  int16_t magneto[3];
+  int16_t accelero[3];
+  float hsensor;
+  float gyro[3];
+#endif
 
   /* USER CODE END 2 */
 
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
+#ifdef FREE_RTOS
   	osMutexDef(Mutex);
   	mutex_id = osMutexCreate(osMutex(Mutex));
+
   /* USER CODE END RTOS_MUTEX */
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
@@ -172,32 +182,35 @@ int main(void)
   /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+#endif
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-//	BSP_GYRO_GetXYZ(gyro);
-//	BSP_ACCELERO_AccGetXYZ(accelero);
-//	BSP_MAGNETO_GetXYZ(magneto);
-//	hsensor = BSP_HSENSOR_ReadHumidity();
-//
-//	switch(currentMode){
-//	case 0:
-//		sprintf(str, "Gyro Sensor X, Y, Z: %.2d, %.2d, %.2d\n", (int) gyro[0], (int) gyro[1], (int) gyro[2]);
-//		break;
-//	case 1:
-//		sprintf(str, "Acceleration X, Y, Z: %.2d, %.2d, %.2d\n", (int) accelero[0], (int) accelero[1], (int) accelero[2]);
-//		break;
-//	case 2:
-//		sprintf(str, "Magnetic X, Y, Z: %.2d, %.2d, %.2d\n", (int) magneto[0], (int) magneto[1], (int) magneto[2]);
-//		break;
-//	case 3:
-//		sprintf(str, "Humidity: %.2d\n", (int) hsensor);
-//		break;
-//	}
-//	HAL_UART_Transmit(&huart1, (uint8_t*) str, (uint16_t) strlen(str), 10000);
-//	HAL_Delay(100); // (1/10Hz) = 0.1s = 100ms delay
+#ifdef I2C_UART || MODE_CHANGE
+	BSP_GYRO_GetXYZ(gyro);
+	BSP_ACCELERO_AccGetXYZ(accelero);
+	BSP_MAGNETO_GetXYZ(magneto);
+	hsensor = BSP_HSENSOR_ReadHumidity();
+
+	switch(currentMode){
+	case 0:
+		sprintf(str, "Gyro Sensor X, Y, Z: %.2d, %.2d, %.2d\n", (int) gyro[0], (int) gyro[1], (int) gyro[2]);
+		break;
+	case 1:
+		sprintf(str, "Acceleration X, Y, Z: %.2d, %.2d, %.2d\n", (int) accelero[0], (int) accelero[1], (int) accelero[2]);
+		break;
+	case 2:
+		sprintf(str, "Magnetic X, Y, Z: %.2d, %.2d, %.2d\n", (int) magneto[0], (int) magneto[1], (int) magneto[2]);
+		break;
+	case 3:
+		sprintf(str, "Humidity: %.2d\n", (int) hsensor);
+		break;
+	}
+	HAL_UART_Transmit(&huart1, (uint8_t*) str, (uint16_t) strlen(str), 10000);
+	HAL_Delay(100); // (1/10Hz) = 0.1s = 100ms delay
+#endif
   }
   /* USER CODE END 3 */
 }
@@ -401,12 +414,19 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
-//	currentMode = (currentMode + 1) % 4;
+
+#ifdef I2C_UART || MODE_CHANGE
+	currentMode = (currentMode + 1) % 4;
+#endif
+
+#ifdef FREE_RTOS
 	isButtonPressed = 1;
+#endif
+
 }
 
 /* USER CODE END 4 */
-
+#ifdef FREE_RTOS
 /* USER CODE BEGIN Header_StartDefaultTask */
 /**
   * @brief  Function implementing the defaultTask thread.
@@ -498,7 +518,7 @@ void StartReadSensorTask(void const * argument)
   }
   /* USER CODE END StartReadSensorsTask */
 }
-
+#endif
 
  /**
   * @brief  Period elapsed callback in non blocking mode
