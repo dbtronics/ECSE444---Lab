@@ -53,6 +53,7 @@ UART_HandleTypeDef huart1;
 /* USER CODE BEGIN PV */
 char str[100];
 
+uint32_t currentMode = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -106,6 +107,7 @@ int main(void)
   BSP_MAGNETO_Init();
   BSP_HSENSOR_Init();
 
+  //initialize UART
   HAL_StatusTypeDef UART_status;
   HAL_UART_Init(&huart1);
 
@@ -123,11 +125,25 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	BSP_GYRO_GetXYZ(gyro);
 	BSP_ACCELERO_AccGetXYZ(accelero);
 	BSP_MAGNETO_GetXYZ(magneto);
-	BSP_GYRO_GetXYZ(gyro);
 	hsensor = BSP_HSENSOR_ReadHumidity();
-	sprintf(str, "Gyro Sensor X, Y, Z: %.2d, %.2d, %.2d\n", (int) gyro[0], (int) gyro[1], (int) gyro[2]);
+
+	switch(currentMode){
+	case 0:
+		sprintf(str, "Gyro Sensor X, Y, Z: %.2d, %.2d, %.2d\n", (int) gyro[0], (int) gyro[1], (int) gyro[2]);
+		break;
+	case 1:
+		sprintf(str, "Acceleration X, Y, Z: %.2d, %.2d, %.2d\n", (int) accelero[0], (int) accelero[1], (int) accelero[2]);
+		break;
+	case 2:
+		sprintf(str, "Magnetic X, Y, Z: %.2d, %.2d, %.2d\n", (int) magneto[0], (int) magneto[1], (int) magneto[2]);
+		break;
+	case 3:
+		sprintf(str, "Humidity: %.2d\n", (int) hsensor);
+		break;
+	}
 	UART_status = HAL_UART_Transmit(&huart1, (uint8_t*) str, (uint16_t) strlen(str), 10000);
 	HAL_Delay(100); // (1/10Hz) = 0.1s = 100ms delay
   }
@@ -333,6 +349,7 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
+	currentMode = (currentMode + 1) % 4;
 }
 
 /* USER CODE END 4 */
