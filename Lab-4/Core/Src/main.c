@@ -26,6 +26,9 @@
 #include "SupportFiles/B-L4S5I-IOT01/stm32l4s5i_iot01_gyro.h"
 #include "SupportFiles/B-L4S5I-IOT01/stm32l4s5i_iot01_magneto.h"
 #include "SupportFiles/B-L4S5I-IOT01/stm32l4s5i_iot01_hsensor.h"
+
+#include <stdio.h>
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -48,6 +51,7 @@ I2C_HandleTypeDef hi2c2;
 UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
+char str[100];
 
 /* USER CODE END PV */
 
@@ -102,6 +106,9 @@ int main(void)
   BSP_MAGNETO_Init();
   BSP_HSENSOR_Init();
 
+  HAL_StatusTypeDef UART_status;
+  HAL_UART_Init(&huart1);
+
   int16_t magneto[3];
   int16_t accelero[3];
   float hsensor;
@@ -120,6 +127,8 @@ int main(void)
 	BSP_MAGNETO_GetXYZ(magneto);
 	BSP_GYRO_GetXYZ(gyro);
 	hsensor = BSP_HSENSOR_ReadHumidity();
+	sprintf(str, "Gyro Sensor X, Y, Z: %.2d, %.2d, %.2d\n", (int) gyro[0], (int) gyro[1], (int) gyro[2]);
+	UART_status = HAL_UART_Transmit(&huart1, (uint8_t*) str, (uint16_t) strlen(str), 10000);
 	HAL_Delay(100); // (1/10Hz) = 0.1s = 100ms delay
   }
   /* USER CODE END 3 */
