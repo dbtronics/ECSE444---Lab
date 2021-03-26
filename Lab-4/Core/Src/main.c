@@ -22,7 +22,10 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "SupportFiles/B-L4S5I-IOT01/stm32l4s5i_iot01_accelero.h"
+#include "SupportFiles/B-L4S5I-IOT01/stm32l4s5i_iot01_gyro.h"
+#include "SupportFiles/B-L4S5I-IOT01/stm32l4s5i_iot01_magneto.h"
+#include "SupportFiles/B-L4S5I-IOT01/stm32l4s5i_iot01_hsensor.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -94,6 +97,16 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 
+  BSP_ACCELERO_Init();
+  BSP_GYRO_Init();
+  BSP_MAGNETO_Init();
+  BSP_HSENSOR_Init();
+
+  int16_t magneto[3];
+  int16_t accelero[3];
+  float hsensor;
+  float gyro[3];
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -103,6 +116,11 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	BSP_ACCELERO_AccGetXYZ(accelero);
+	BSP_MAGNETO_GetXYZ(magneto);
+	BSP_GYRO_GetXYZ(gyro);
+	hsensor = BSP_HSENSOR_ReadHumidity();
+	HAL_Delay(100); // (1/10Hz) = 0.1s = 100ms delay
   }
   /* USER CODE END 3 */
 }
@@ -304,6 +322,9 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+	HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
+}
 
 /* USER CODE END 4 */
 
