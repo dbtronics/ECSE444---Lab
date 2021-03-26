@@ -19,6 +19,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "cmsis_os.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -50,10 +51,20 @@ I2C_HandleTypeDef hi2c2;
 
 UART_HandleTypeDef huart1;
 
+osThreadId defaultTaskHandle;
 /* USER CODE BEGIN PV */
 char str[100];
-
 uint32_t currentMode = 0;
+
+//Part4
+osMutexId mutex_id;
+osThreadId transmitTaskHandle;
+osThreadId readSensorTaskHandle;
+uint32_t isButtonPressed = 0;
+int16_t magneto[3];
+int16_t accelero[3];
+float hsensor;
+float gyro[3];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -61,8 +72,11 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_I2C2_Init(void);
 static void MX_USART1_UART_Init(void);
-/* USER CODE BEGIN PFP */
+void StartDefaultTask(void const * argument);
 
+/* USER CODE BEGIN PFP */
+void StartTransmitTask(void const * argument);
+void StartReadSensorTask(void const * argument);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -102,22 +116,60 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 
-  BSP_ACCELERO_Init();
-  BSP_GYRO_Init();
-  BSP_MAGNETO_Init();
-  BSP_HSENSOR_Init();
+//  BSP_ACCELERO_Init();
+//  BSP_GYRO_Init();
+//  BSP_MAGNETO_Init();
+//  BSP_HSENSOR_Init();
 
   //initialize UART
-  HAL_StatusTypeDef UART_status;
   HAL_UART_Init(&huart1);
 
-  int16_t magneto[3];
-  int16_t accelero[3];
-  float hsensor;
-  float gyro[3];
+//  int16_t magneto[3];
+//  int16_t accelero[3];
+//  float hsensor;
+//  float gyro[3];
 
   /* USER CODE END 2 */
 
+  /* USER CODE BEGIN RTOS_MUTEX */
+  /* add mutexes, ... */
+  	osMutexDef(Mutex);
+  	mutex_id = osMutexCreate(osMutex(Mutex));
+  /* USER CODE END RTOS_MUTEX */
+
+  /* USER CODE BEGIN RTOS_SEMAPHORES */
+  /* add semaphores, ... */
+  /* USER CODE END RTOS_SEMAPHORES */
+
+  /* USER CODE BEGIN RTOS_TIMERS */
+  /* start timers, add new ones, ... */
+  /* USER CODE END RTOS_TIMERS */
+
+  /* USER CODE BEGIN RTOS_QUEUES */
+  /* add queues, ... */
+  /* USER CODE END RTOS_QUEUES */
+
+  /* Create the thread(s) */
+  /* definition and creation of defaultTask */
+  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
+  defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
+
+  /* USER CODE BEGIN RTOS_THREADS */
+  /* add threads, ... */
+  /* definition and creation of transmitTask */
+  osThreadDef(transmitTask, StartTransmitTask, osPriorityNormal, 0, 128);
+  transmitTaskHandle = osThreadCreate(osThread(transmitTask), NULL);
+
+  /* definition and creation of readSensorsTask */
+  osThreadDef(readSensorTask, StartReadSensorTask, osPriorityNormal, 0, 128);
+  readSensorTaskHandle = osThreadCreate(osThread(readSensorTask), NULL);
+
+  /* USER CODE END RTOS_THREADS */
+
+  /* Start scheduler */
+  osKernelStart();
+
+  /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
@@ -125,27 +177,27 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	BSP_GYRO_GetXYZ(gyro);
-	BSP_ACCELERO_AccGetXYZ(accelero);
-	BSP_MAGNETO_GetXYZ(magneto);
-	hsensor = BSP_HSENSOR_ReadHumidity();
-
-	switch(currentMode){
-	case 0:
-		sprintf(str, "Gyro Sensor X, Y, Z: %.2d, %.2d, %.2d\n", (int) gyro[0], (int) gyro[1], (int) gyro[2]);
-		break;
-	case 1:
-		sprintf(str, "Acceleration X, Y, Z: %.2d, %.2d, %.2d\n", (int) accelero[0], (int) accelero[1], (int) accelero[2]);
-		break;
-	case 2:
-		sprintf(str, "Magnetic X, Y, Z: %.2d, %.2d, %.2d\n", (int) magneto[0], (int) magneto[1], (int) magneto[2]);
-		break;
-	case 3:
-		sprintf(str, "Humidity: %.2d\n", (int) hsensor);
-		break;
-	}
-	UART_status = HAL_UART_Transmit(&huart1, (uint8_t*) str, (uint16_t) strlen(str), 10000);
-	HAL_Delay(100); // (1/10Hz) = 0.1s = 100ms delay
+//	BSP_GYRO_GetXYZ(gyro);
+//	BSP_ACCELERO_AccGetXYZ(accelero);
+//	BSP_MAGNETO_GetXYZ(magneto);
+//	hsensor = BSP_HSENSOR_ReadHumidity();
+//
+//	switch(currentMode){
+//	case 0:
+//		sprintf(str, "Gyro Sensor X, Y, Z: %.2d, %.2d, %.2d\n", (int) gyro[0], (int) gyro[1], (int) gyro[2]);
+//		break;
+//	case 1:
+//		sprintf(str, "Acceleration X, Y, Z: %.2d, %.2d, %.2d\n", (int) accelero[0], (int) accelero[1], (int) accelero[2]);
+//		break;
+//	case 2:
+//		sprintf(str, "Magnetic X, Y, Z: %.2d, %.2d, %.2d\n", (int) magneto[0], (int) magneto[1], (int) magneto[2]);
+//		break;
+//	case 3:
+//		sprintf(str, "Humidity: %.2d\n", (int) hsensor);
+//		break;
+//	}
+//	HAL_UART_Transmit(&huart1, (uint8_t*) str, (uint16_t) strlen(str), 10000);
+//	HAL_Delay(100); // (1/10Hz) = 0.1s = 100ms delay
   }
   /* USER CODE END 3 */
 }
@@ -341,7 +393,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(LED_GREEN_GPIO_Port, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
 }
@@ -349,10 +401,125 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
-	currentMode = (currentMode + 1) % 4;
+//	currentMode = (currentMode + 1) % 4;
+	isButtonPressed = 1;
 }
 
 /* USER CODE END 4 */
+
+/* USER CODE BEGIN Header_StartDefaultTask */
+/**
+  * @brief  Function implementing the defaultTask thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+/* USER CODE END Header_StartDefaultTask */
+void StartDefaultTask(void const * argument)
+{
+  /* USER CODE BEGIN 5 */
+// This default task should control changing the mode
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(100);
+    osMutexWait(mutex_id, osWaitForever);
+    if (isButtonPressed) {
+      	isButtonPressed = 0;
+      	currentMode = (currentMode + 1) % 4;
+      }
+    osMutexRelease(mutex_id);
+  }
+  /* USER CODE END 5 */
+}
+
+/* USER CODE BEGIN Header_StartTransmitTask */
+/**
+  * @brief  Function implementing the defaultTask thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+/* USER CODE END Header_StartTransmitTask */
+void StartTransmitTask(void const * argument)
+{
+  /* USER CODE BEGIN StartTransmitTask */
+  // UART status
+  HAL_UART_Init(&huart1);
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(100);
+    osMutexWait(mutex_id, osWaitForever);
+	switch(currentMode){
+	case 0:
+		sprintf(str, "Gyro Sensor X, Y, Z: %.2d, %.2d, %.2d\n", (int) gyro[0], (int) gyro[1], (int) gyro[2]);
+		break;
+	case 1:
+		sprintf(str, "Acceleration X, Y, Z: %.2d, %.2d, %.2d\n", (int) accelero[0], (int) accelero[1], (int) accelero[2]);
+		break;
+	case 2:
+		sprintf(str, "Magnetic X, Y, Z: %.2d, %.2d, %.2d\n", (int) magneto[0], (int) magneto[1], (int) magneto[2]);
+		break;
+	case 3:
+		sprintf(str, "Humidity: %.2d\n", (int) hsensor);
+		break;
+	}
+	HAL_UART_Transmit(&huart1, (uint8_t*) str, (uint16_t) strlen(str), 10000);
+	osMutexRelease(mutex_id);
+  }
+  /* USER CODE END StartTransmitTask */
+}
+
+/* USER CODE BEGIN Header_ReadSensorTask */
+/**
+  * @brief  Function implementing the readTask thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+/* USER CODE END Header_ReadSensorTask */
+void StartReadSensorTask(void const * argument)
+{
+  /* USER CODE BEGIN StartReadSensorsTask */
+	BSP_ACCELERO_Init();
+	BSP_GYRO_Init();
+	BSP_MAGNETO_Init();
+	BSP_HSENSOR_Init();
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(100);
+    //get lock before entering critical section
+    osMutexWait(mutex_id, osWaitForever);
+	BSP_GYRO_GetXYZ(gyro);
+	BSP_ACCELERO_AccGetXYZ(accelero);
+	BSP_MAGNETO_GetXYZ(magneto);
+	hsensor = BSP_HSENSOR_ReadHumidity();
+	osMutexRelease(mutex_id);
+
+  }
+  /* USER CODE END StartReadSensorsTask */
+}
+
+
+ /**
+  * @brief  Period elapsed callback in non blocking mode
+  * @note   This function is called  when TIM6 interrupt took place, inside
+  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
+  * a global variable "uwTick" used as application time base.
+  * @param  htim : TIM handle
+  * @retval None
+  */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  /* USER CODE BEGIN Callback 0 */
+
+  /* USER CODE END Callback 0 */
+  if (htim->Instance == TIM6) {
+    HAL_IncTick();
+  }
+  /* USER CODE BEGIN Callback 1 */
+
+  /* USER CODE END Callback 1 */
+}
 
 /**
   * @brief  This function is executed in case of error occurrence.
